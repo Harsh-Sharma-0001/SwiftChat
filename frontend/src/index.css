@@ -1,0 +1,188 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── CSS Variables ───────────────────────────────────────────── */
+:root {
+  --bg-primary: #0a0b14;
+  --bg-surface: #0f1021;
+  --bg-card: #13152a;
+  --bg-hover: #1a1d35;
+  --border: #1e2140;
+  --accent: #7c3aed;
+  --accent-light: #a855f7;
+  --accent-glow: #c084fc;
+  --pink: #ec4899;
+  --cyan: #06b6d4;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+}
+
+/* ─── Base Reset ──────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg-primary);
+  color: var(--text);
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ─── Scrollbar ───────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg-surface); }
+::-webkit-scrollbar-thumb {
+  background: var(--accent);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--accent-light); }
+
+/* ─── Utility Classes ─────────────────────────────────────────── */
+@layer components {
+  .glass-card {
+    @apply bg-sc-card border border-sc-border rounded-2xl backdrop-blur-sm;
+    background: linear-gradient(135deg, rgba(19,21,42,0.9), rgba(26,29,53,0.9));
+  }
+
+  .gradient-btn {
+    @apply text-white font-semibold rounded-xl transition-all duration-300;
+    background: linear-gradient(135deg, #7c3aed, #ec4899);
+    &:hover {
+      background: linear-gradient(135deg, #6d28d9, #db2777);
+      box-shadow: 0 0 20px rgba(124,58,237,0.4);
+      transform: translateY(-1px);
+    }
+    &:active { transform: translateY(0); }
+  }
+
+  .ghost-btn {
+    @apply text-sc-muted border border-sc-border rounded-xl px-4 py-2 
+           transition-all duration-200 hover:bg-sc-hover hover:text-sc-text hover:border-sc-accent;
+  }
+
+  .sidebar-item {
+    @apply flex items-center gap-3 px-4 py-3 rounded-xl text-sc-muted
+           transition-all duration-200 cursor-pointer;
+    &:hover { @apply bg-sc-hover text-sc-text; }
+    &.active { @apply bg-sc-hover text-sc-accent-light; }
+  }
+
+  .emotion-tag {
+    @apply px-3 py-1 rounded-full text-xs font-semibold border;
+    background: rgba(124,58,237,0.15);
+    border-color: rgba(124,58,237,0.4);
+    color: #a855f7;
+  }
+
+  .skeleton {
+    @apply rounded-lg;
+    background: linear-gradient(90deg, #13152a 25%, #1a1d35 50%, #13152a 75%);
+    background-size: 200% 100%;
+    animation: shimmer 2s linear infinite;
+  }
+
+  .trend-badge {
+    @apply text-xs font-bold px-2 py-0.5 rounded-md;
+  }
+
+  .trend-hot { @apply text-red-400 bg-red-400/10; }
+  .trend-rising { @apply text-green-400 bg-green-400/10; }
+  .trend-steady { @apply text-blue-400 bg-blue-400/10; }
+
+  .mood-vibrant { @apply text-pink-400 bg-pink-400/10 text-xs font-bold px-2 py-0.5 rounded-md; }
+  .mood-deep { @apply text-purple-400 bg-purple-400/10 text-xs font-bold px-2 py-0.5 rounded-md; }
+  .mood-ethereal { @apply text-cyan-400 bg-cyan-400/10 text-xs font-bold px-2 py-0.5 rounded-md; }
+}
+
+/* ─── Animations ──────────────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(124,58,237,0.3); }
+  50%       { box-shadow: 0 0 20px rgba(124,58,237,0.6); }
+}
+
+.fade-in { animation: fadeIn 0.3s ease-out forwards; }
+.glow-pulse { animation: glowPulse 2s ease-in-out infinite; }
+
+/* ─── Layout ──────────────────────────────────────────────────── */
+.app-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr 280px;
+  min-height: 100vh;
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+@media (max-width: 1200px) {
+  .app-layout { grid-template-columns: 200px 1fr; }
+  .right-panel { display: none; }
+}
+
+@media (max-width: 768px) {
+  .app-layout { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+}
+
+/* ─── Post Card ───────────────────────────────────────────────── */
+.post-card {
+  @apply glass-card p-5 mb-4;
+  animation: fadeIn 0.3s ease-out;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.post-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(124,58,237,0.1);
+}
+
+/* ─── Chat Bubbles ────────────────────────────────────────────── */
+.chat-bubble-user {
+  @apply ml-auto rounded-2xl rounded-br-sm px-4 py-3 max-w-xs;
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  color: white;
+}
+
+.chat-bubble-other {
+  @apply rounded-2xl rounded-bl-sm px-4 py-3 max-w-xs;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+}
+
+/* ─── Input ───────────────────────────────────────────────────── */
+.sc-input {
+  @apply w-full bg-sc-surface border border-sc-border rounded-xl px-4 py-3 
+         text-sc-text placeholder-sc-muted outline-none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.sc-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(124,58,237,0.15);
+}
+
+/* ─── Gradients ───────────────────────────────────────────────── */
+.text-gradient {
+  background: linear-gradient(135deg, #a855f7, #ec4899);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.accent-underline {
+  text-decoration: underline;
+  text-decoration-color: var(--accent-light);
+  text-underline-offset: 4px;
+}
