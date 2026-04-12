@@ -4,13 +4,6 @@ const app = require('../src/app');
 
 jest.setTimeout(45000);
 
-beforeAll(async () => {
-  const mongoose = require('mongoose');
-  if (mongoose.connection.readyState !== 1) {
-    console.warn('⚠️ Database not connected. Tests may fail fast due to bufferCommands=false.');
-  }
-});
-
 describe('Auth API', () => {
   const testUser = {
     username: `testuser_${Date.now()}`,

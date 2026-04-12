@@ -1,12 +1,10 @@
-version: '3.8'
-
 services:
 
   redis:
     image: redis:7-alpine
     container_name: swiftchat_redis
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     networks:
       - swiftchat_network
 
@@ -16,26 +14,26 @@ services:
       context: ./backend
     container_name: swiftchat_backend
     depends_on:
-
       redis:
         condition: service_started
-    env_file:
-      - ./backend/.env
     environment:
-      - NODE_ENV=development
-      - PORT=5000
-      - REDIS_URL=redis://redis:6379
-      - JWT_SECRET=super_secret_jwt_key_for_swiftchat_123
-      - JWT_REFRESH_SECRET=strong_refresh_token_secret_123
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=${PORT:-5000}
+      - MONGODB_URI=${MONGODB_URI:-mongodb://localhost:27017/swiftchat}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - JWT_SECRET=${JWT_SECRET:-super_secret_jwt_key_for_swiftchat_123}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-strong_refresh_token_secret_123}
       - AI_CAPTION_SERVICE_URL=http://caption-service:8001
       - AI_EMOTION_SERVICE_URL=http://emotion-service:8002
       - AI_SEARCH_SERVICE_URL=http://search-service:8003
       - AI_CHAT_SERVICE_URL=http://chat-service:8004
       - AI_MODERATION_SERVICE_URL=http://moderation-service:8005
+      - AI_SERVICE_KEY=${AI_SERVICE_KEY:-swiftchat-secret-key}
+      - NVIDIA_API_KEY=${NVIDIA_API_KEY:-}
     volumes:
       - ./backend/uploads:/app/uploads
     ports:
-      - "5000:5000"
+      - "${PORT:-5000}:${PORT:-5000}"
     networks:
       - swiftchat_network
 
@@ -45,8 +43,10 @@ services:
       context: ./ai-services
       dockerfile: caption-service/Dockerfile
     container_name: swiftchat_caption_service
-    env_file:
-      - ./ai-services/.env
+    environment:
+      - NVIDIA_API_KEY=${NVIDIA_API_KEY:-}
+      - API_KEY=${AI_SERVICE_KEY:-swiftchat-secret-key}
+      - PORT_CAPTION=8001
     ports:
       - "8001:8001"
     networks:
@@ -57,8 +57,10 @@ services:
       context: ./ai-services
       dockerfile: emotion-service/Dockerfile
     container_name: swiftchat_emotion_service
-    env_file:
-      - ./ai-services/.env
+    environment:
+      - NVIDIA_API_KEY=${NVIDIA_API_KEY:-}
+      - API_KEY=${AI_SERVICE_KEY:-swiftchat-secret-key}
+      - PORT_EMOTION=8002
     ports:
       - "8002:8002"
     networks:
@@ -69,8 +71,11 @@ services:
       context: ./ai-services
       dockerfile: search-service/Dockerfile
     container_name: swiftchat_search_service
-    env_file:
-      - ./ai-services/.env
+    environment:
+      - NVIDIA_API_KEY=${NVIDIA_API_KEY:-}
+      - API_KEY=${AI_SERVICE_KEY:-swiftchat-secret-key}
+      - MONGODB_URI=${MONGODB_URI:-mongodb://localhost:27017/swiftchat}
+      - PORT_SEARCH=8003
     ports:
       - "8003:8003"
     networks:
@@ -81,8 +86,11 @@ services:
       context: ./ai-services
       dockerfile: chat-service/Dockerfile
     container_name: swiftchat_chat_service
-    env_file:
-      - ./ai-services/.env
+    environment:
+      - NVIDIA_API_KEY=${NVIDIA_API_KEY:-}
+      - API_KEY=${AI_SERVICE_KEY:-swiftchat-secret-key}
+      - SEARCH_SERVICE_URL=http://swiftchat_search_service:8003/search
+      - PORT_CHAT=8004
     ports:
       - "8004:8004"
     networks:
@@ -93,8 +101,10 @@ services:
       context: ./ai-services
       dockerfile: moderation-service/Dockerfile
     container_name: swiftchat_moderation_service
-    env_file:
-      - ./ai-services/.env
+    environment:
+      - NVIDIA_API_KEY=${NVIDIA_API_KEY:-}
+      - API_KEY=${AI_SERVICE_KEY:-swiftchat-secret-key}
+      - PORT_MODERATION=8005
     ports:
       - "8005:8005"
     networks:
@@ -106,9 +116,9 @@ services:
       context: ./frontend
     container_name: swiftchat_frontend
     environment:
-      - VITE_API_URL=http://localhost/api
+      - VITE_API_URL=${VITE_API_URL:-http://localhost/api}
     ports:
-      - "5173:5173"
+      - "${FRONTEND_PORT:-5173}:5173"
     networks:
       - swiftchat_network
 
