@@ -6,6 +6,10 @@ async function connectMongoDB(retries = 5) {
   const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/swiftchat';
   const maskedUri = uri.replace(/(mongodb(?:\+srv)?:\/\/[^:]+:)([^@]+)(@.*)/, '$1****$3');
   
+  if (!process.env.MONGODB_URI) {
+    logger.error('CRITICAL: MONGODB_URI is missing from environment');
+  }
+
   while (retries > 0) {
     try {
       logger.info(`🔄 Attempting MongoDB connection: ${maskedUri}`);
@@ -13,7 +17,8 @@ async function connectMongoDB(retries = 5) {
         serverSelectionTimeoutMS: 20000,
         connectTimeoutMS: 30000,
         socketTimeoutMS: 45000,
-        family: 4 // Force IPv4 for faster cloud resolution
+        family: 4, // Force IPv4 for faster cloud resolution
+        bufferCommands: false // Disable buffering to prevent hangs
       });
       logger.info(`✅ MongoDB connected via Mongoose: ${maskedUri}`);
       return;
