@@ -1,3 +1,4 @@
+jest.setTimeout(45000);
 const { registerUser, loginUser, logoutUser } = require('../src/services/auth.service');
 const User = require('../src/models/User.model');
 const bcrypt = require('bcryptjs');

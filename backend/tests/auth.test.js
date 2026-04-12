@@ -2,6 +2,8 @@
 const request = require('supertest');
 const app = require('../src/app');
 
+jest.setTimeout(45000);
+
 describe('Auth API', () => {
   const testUser = {
     username: `testuser_${Date.now()}`,

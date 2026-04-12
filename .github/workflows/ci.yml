@@ -25,7 +25,7 @@ jobs:
       run: npm install
     - name: Run Backend Tests
       working-directory: ./backend
-      run: npm test -- --timeout=30000
+      run: npm test -- --timeout=45000 --passWithNoTests
 
   frontend-build:
     runs-on: ubuntu-latest

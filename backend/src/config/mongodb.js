@@ -10,7 +10,10 @@ async function connectMongoDB(retries = 5) {
     try {
       logger.info(`🔄 Attempting MongoDB connection: ${maskedUri}`);
       await mongoose.connect(uri, {
-        serverSelectionTimeoutMS: 30000,
+        serverSelectionTimeoutMS: 20000,
+        connectTimeoutMS: 30000,
+        socketTimeoutMS: 45000,
+        family: 4 // Force IPv4 for faster cloud resolution
       });
       logger.info(`✅ MongoDB connected via Mongoose: ${maskedUri}`);
       return;
