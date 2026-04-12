@@ -32,6 +32,8 @@ services:
       - AI_SEARCH_SERVICE_URL=http://search-service:8003
       - AI_CHAT_SERVICE_URL=http://chat-service:8004
       - AI_MODERATION_SERVICE_URL=http://moderation-service:8005
+    volumes:
+      - ./backend/uploads:/app/uploads
     ports:
       - "5000:5000"
     networks:

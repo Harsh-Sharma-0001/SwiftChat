@@ -1,4 +1,5 @@
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const { StatusCodes } = require('http-status-codes');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User.model');
@@ -7,6 +8,7 @@ const Follow = require('../models/Follow.model');
 const { generateAccessToken, generateRefreshToken, verifyRefreshToken } = require('../utils/jwt');
 const { AppError } = require('../middleware/errorHandler');
 const { redisClient } = require('../config/redis');
+const { sendEmail, buildResetPasswordEmail } = require('../utils/email.service');
 
 const registerUser = async ({ username, email, password, displayName }) => {
   const existingUser = await User.findOne({ $or: [{ email }, { username }] });
@@ -14,8 +16,7 @@ const registerUser = async ({ username, email, password, displayName }) => {
     throw new AppError('Email or username already in use', StatusCodes.CONFLICT);
   }
 
-  const passwordHash = await bcrypt.hash(password, 12);
-  const user = await User.create({ username, email, passwordHash, displayName: displayName || username });
+  const user = await User.create({ username, email, password, displayName: displayName || username });
 
   const safeUser = { id: user._id, username: user.username, email: user.email, displayName: user.displayName, role: user.role, createdAt: user.createdAt };
 
@@ -94,4 +95,67 @@ const logoutUser = async ({ refreshToken, accessToken }) => {
   return {};
 };
 
-module.exports = { registerUser, loginUser, getMeProfile, refreshTokenService, logoutUser };
+const forgotPasswordService = async (email) => {
+  const user = await User.findOne({ email });
+
+  // Always respond with a generic message to prevent user enumeration attacks
+  if (!user) {
+    return { message: 'If that email exists, a reset link has been dispatched.' };
+  }
+
+  // Generate a raw token and its hashed counterpart
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
+
+  // 10-minute expiry
+  user.resetPasswordToken = hashedToken;
+  user.resetPasswordExpire = new Date(Date.now() + 10 * 60 * 1000);
+  await user.save();
+
+  // Build the reset URL and send the styled email
+  const resetUrl = `${process.env.CLIENT_ORIGIN}/reset-password?token=${rawToken}`;
+  const html = buildResetPasswordEmail(resetUrl);
+
+  try {
+    await sendEmail({
+      to: user.email,
+      subject: '⚡ Re-sync Your Neural Link — SwiftChat',
+      html,
+    });
+  } catch (err) {
+    // If email fails, clear the token so the user can retry
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+    await user.save();
+    throw new AppError('Email transmission failed. Please try again later.', StatusCodes.INTERNAL_SERVER_ERROR);
+  }
+
+  return { message: 'If that email exists, a reset link has been dispatched.' };
+};
+
+const resetPasswordService = async (rawToken, newPassword) => {
+  if (!rawToken) throw new AppError('Reset token is required', StatusCodes.BAD_REQUEST);
+  if (!newPassword || newPassword.length < 8) throw new AppError('Password must be at least 8 characters', StatusCodes.BAD_REQUEST);
+
+  // Hash the incoming raw token and find the matching user
+  const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
+
+  const user = await User.findOne({
+    resetPasswordToken: hashedToken,
+    resetPasswordExpire: { $gt: Date.now() }, // Token must not be expired
+  });
+
+  if (!user) {
+    throw new AppError('Invalid or expired reset token. Please request a new Neural Link.', StatusCodes.BAD_REQUEST);
+  }
+
+  // Update the password - let Mongoose hook do the hashing
+  user.password = newPassword;
+  user.resetPasswordToken = undefined;
+  user.resetPasswordExpire = undefined;
+  await user.save();
+
+  return { message: 'Neural Link re-synced. You may now log in with your new password.' };
+};
+
+module.exports = { registerUser, loginUser, getMeProfile, refreshTokenService, logoutUser, forgotPasswordService, resetPasswordService };

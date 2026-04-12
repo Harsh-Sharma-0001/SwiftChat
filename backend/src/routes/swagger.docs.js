@@ -146,10 +146,60 @@
  *       200:
  *         description: User updated
  * 
- * /users/follow:
+ * /users/follow/{id}:
  *   post:
  *     tags: [Users]
- *     summary: Follow or unfollow a user
+ *     summary: Follow or unfollow a user (toggle logic)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Target user ID to follow/unfollow
+ *     responses:
+ *       200:
+ *         description: Interaction synchronized
+ *
+ * /users/settings:
+ *   patch:
+ *     tags: [Users]
+ *     summary: Update neural settings (AI insights, privacy, notifications)
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               aiInsights:
+ *                 type: boolean
+ *               isPrivate:
+ *                 type: boolean
+ *               notifications:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Settings persisted
+ *
+ * /interactions/insights:
+ *   get:
+ *     tags: [Interactions]
+ *     summary: Get live Cognitive Insights and Flow State metrics
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Insights aggregation schema returned
+ *
+ * /ai/chat:
+ *   post:
+ *     tags: [AI]
+ *     summary: Chat with ARIA AI guide (Identity-Grounded)
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -159,11 +209,14 @@
  *           schema:
  *             type: object
  *             required:
- *               - targetUserId
+ *               - message
  *             properties:
- *               targetUserId:
+ *               message:
  *                 type: string
+ *               context:
+ *                 type: object
+ *                 description: Identity grounding and platform context
  *     responses:
  *       200:
- *         description: Follow status toggled
+ *         description: AI response generated
  */

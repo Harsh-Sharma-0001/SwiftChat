@@ -5,7 +5,7 @@ import { toggleChat, sendMessage, addUserMessage } from '../../store/slices/chat
 
 export default function ChatbotWidget() {
   const dispatch = useDispatch();
-  const { messages, isTyping, isOpen, sessionId } = useSelector(state => state.chat);
+  const { messages, isTyping, isOpen, sessionId, aiSuggestion } = useSelector(state => state.chat);
   const [input, setInput] = useState('');
   const endRef = useRef(null);
 
@@ -28,9 +28,9 @@ export default function ChatbotWidget() {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed bottom-6 right-8 w-80 sm:w-96 h-[500px] glass-card flex flex-col shadow-2xl z-50 border-sc-accent-light/30 animate-fade-in">
+    <div className="fixed bottom-6 right-8 w-80 sm:w-96 h-[500px] glass-card flex flex-col shadow-2xl z-50 -light/30 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-sc-border bg-sc-hover/50 rounded-t-2xl">
+      <div className="flex items-center justify-between p-4 bg-sc-hover/50 rounded-t-2xl">
         <div className="flex items-center gap-3">
           <div className="h-8 w-8 rounded-full bg-gradient-accent flex items-center justify-center p-0.5 glow-pulse">
             <div className="h-full w-full bg-sc-bg rounded-full flex items-center justify-center">
@@ -52,7 +52,7 @@ export default function ChatbotWidget() {
         {messages.map((msg) => (
           <div key={msg.id} className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             {msg.role === 'assistant' && (
-              <div className="w-6 h-6 rounded-full bg-sc-hover border border-sc-border flex items-center justify-center flex-shrink-0 mt-auto">
+              <div className="w-6 h-6 rounded-full bg-sc-hover flex items-center justify-center flex-shrink-0 mt-auto">
                 <Sparkles size={10} className="text-sc-accent-light" />
               </div>
             )}
@@ -62,7 +62,7 @@ export default function ChatbotWidget() {
             </div>
 
             {msg.role === 'user' && (
-              <div className="w-6 h-6 rounded-full bg-sc-hover border border-sc-accent/50 flex items-center justify-center flex-shrink-0 mt-auto">
+              <div className="w-6 h-6 rounded-full bg-sc-hover flex items-center justify-center flex-shrink-0 mt-auto">
                 <UserIcon size={10} className="text-sc-text" />
               </div>
             )}
@@ -84,14 +84,34 @@ export default function ChatbotWidget() {
         <div ref={endRef} />
       </div>
 
+      {/* AI Suggestion Bubble */}
+      {aiSuggestion && (
+        <div className="px-4 py-2 animate-in fade-in slide-in-from-bottom-2">
+          <div 
+            onClick={() => { 
+                setInput(''); 
+                dispatch(addUserMessage(aiSuggestion)); 
+                dispatch(sendMessage({ message: aiSuggestion, sessionId })); 
+            }}
+            className="group cursor-pointer bg-sc-accent/10 border border-sc-accent/20 hover:border-sc-accent/50 rounded-xl p-3 transition-all"
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <Sparkles size={12} className="text-sc-accent-light" />
+              <span className="text-[10px] font-bold uppercase tracking-wider text-sc-accent-light">Suggested Interaction</span>
+            </div>
+            <p className="text-xs text-sc-text group-hover:text-white transition-colors italic">"{aiSuggestion}"</p>
+          </div>
+        </div>
+      )}
+
       {/* Input Form */}
-      <form onSubmit={handleSend} className="p-3 border-t border-sc-border bg-sc-surface rounded-b-2xl flex gap-2">
+      <form onSubmit={handleSend} className="p-3 bg-sc-surface rounded-b-2xl flex gap-2">
         <input 
           type="text" 
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask ARIA anything..."
-          className="flex-1 bg-sc-hover border border-sc-border rounded-full px-4 py-2 outline-none text-sm focus:border-sc-accent text-sc-text placeholder-sc-muted transition-colors"
+          className="flex-1 bg-sc-hover rounded-full px-4 py-2 outline-none text-sm focus: text-sc-text placeholder-sc-muted transition-colors"
           disabled={isTyping}
         />
         <button 

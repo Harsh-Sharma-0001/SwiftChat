@@ -46,15 +46,24 @@ const getFeed = async (userId, page = 1, limit = 10) => {
   }
 
   const follows = await Follow.find({ follower: userId }).select('following');
-  const feedUserIds = [userId, ...follows.map(f => f.following)];
+  const followedIds = follows.map(f => f.following);
+  
+  // Unified Aggregation: (Own + Following + Global Sentient Stream)
+  const query = {
+    $or: [
+      { user: userId },
+      { user: { $in: followedIds } },
+      { isPublic: true, isFlagged: false }
+    ]
+  };
 
   const [posts, total] = await Promise.all([
-    Post.find({ user: { $in: feedUserIds }, isPublic: true, isFlagged: false })
+    Post.find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .populate('user', 'username displayName avatarUrl emotionVibe'),
-    Post.countDocuments({ user: { $in: feedUserIds }, isPublic: true })
+    Post.countDocuments(query)
   ]);
 
   const formattedPosts = await Promise.all(posts.map(async (p) => {
@@ -130,4 +139,33 @@ const getTrending = async () => {
   return { posts: withCounts };
 };
 
-module.exports = { createPost, getFeed, getPostById, deletePost, getTrending };
+const getUserPosts = async (targetUserId, requestingUserId, page = 1, limit = 10) => {
+  const skip = (page - 1) * limit;
+
+  const [posts, total] = await Promise.all([
+    Post.find({ user: targetUserId, isPublic: true, isFlagged: false })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .populate('user', 'username displayName avatarUrl emotionVibe'),
+    Post.countDocuments({ user: targetUserId, isPublic: true })
+  ]);
+
+  const formattedPosts = await Promise.all(posts.map(async (p) => {
+    const isLiked = await Like.exists({ user: requestingUserId, post: p._id });
+    const likesCount = await Like.countDocuments({ post: p._id });
+    const commentsCount = await Comment.countDocuments({ post: p._id });
+    return {
+      ...p.toObject(),
+      id: p._id,
+      isLiked: !!isLiked,
+      _count: { likes: likesCount, comments: commentsCount }
+    };
+  }));
+
+  const pagination = { page, limit, total, totalPages: Math.ceil(total / limit), hasNext: page * limit < total };
+
+  return { posts: formattedPosts, pagination };
+};
+
+module.exports = { createPost, getFeed, getPostById, deletePost, getTrending, getUserPosts };

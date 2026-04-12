@@ -81,7 +81,7 @@ Return ONLY valid JSON in this precise format: {"flagged": true/false, "max_scor
                 message="Content flagged for review" if is_flagged else "Content approved"
             )
         except Exception as e:
-            print(f"Moderation error: {e}")
+            pass
     
     # Safe default (fallback when API unavailable)
     return ModerationResponse(

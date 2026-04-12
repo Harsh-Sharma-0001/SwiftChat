@@ -8,14 +8,21 @@ export default function Layout() {
   const { isSidebarOpen, isRightPanelOpen } = useSelector((state) => state.ui);
 
   return (
-    <div className="app-layout h-screen overflow-hidden">
-      {isSidebarOpen && <Sidebar />}
-      
-      <main className="flex-1 overflow-y-auto relative bg-sc-bg">
+    <div className="app-layout">
+      {/* LEFT COLUMN — sticky sidebar */}
+      <div className="sidebar-col bg-[#081329]/60 backdrop-blur-[30px] shadow-[2px_0_20px_rgba(0,0,0,0.3)]">
+        <Sidebar />
+      </div>
+
+      {/* CENTER COLUMN — only scrollable area */}
+      <main className="main-col bg-sc-bg">
         <Outlet />
       </main>
-      
-      {isRightPanelOpen && <RightPanel />}
+
+      {/* RIGHT COLUMN — sticky right panel */}
+      <div className="right-panel-col bg-[#081329]/60 backdrop-blur-[30px] shadow-[-2px_0_20px_rgba(0,0,0,0.3)]">
+        <RightPanel />
+      </div>
 
       <ChatbotWidget />
     </div>

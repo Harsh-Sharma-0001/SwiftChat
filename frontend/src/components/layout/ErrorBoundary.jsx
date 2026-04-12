@@ -27,7 +27,7 @@ class ErrorBoundary extends Component {
           <div className="flex gap-4">
             <button 
               onClick={() => window.location.reload()}
-              className="bg-sc-hover text-sc-text px-6 py-3 rounded-lg hover:bg-sc-border transition flex items-center justify-center"
+              className="bg-sc-hover text-sc-text px-6 py-3 rounded-lg hover:bg-sc- transition flex items-center justify-center"
             >
               Refresh Page
             </button>

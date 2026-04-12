@@ -4,9 +4,9 @@ export default {
   theme: {
     extend: {
       colors: {
-        'sc-bg': '#0a0b14',
-        'sc-surface': '#0f1021',
-        'sc-card': '#13152a',
+        'sc-bg': '#060e20',
+        'sc-surface': '#081329',
+        'sc-card': '#142449',
         'sc-border': '#1e2140',
         'sc-accent': '#7c3aed',
         'sc-accent-light': '#a855f7',
@@ -19,6 +19,7 @@ export default {
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
+        display: ['Space Grotesk', 'sans-serif'],
       },
       boxShadow: {
         'glow': '0 0 20px rgba(124, 58, 237, 0.25)',

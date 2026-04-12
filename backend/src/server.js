@@ -7,10 +7,14 @@ const app = require('./app');
 const logger = require('./config/logger');
 const { connectMongoDB } = require('./config/mongodb');
 const { testRedisConnection } = require('./config/redis');
+const { initSocket } = require('./config/socket');
 
 const PORT = process.env.PORT || 5000;
 
 const server = http.createServer(app);
+
+// Attach Socket.io to the HTTP server
+initSocket(server);
 
 async function startServer() {
   try {

@@ -2,7 +2,7 @@
 const router = require('express').Router();
 const passport = require('passport');
 const { body } = require('express-validator');
-const { register, login, getMe, refreshToken, logout } = require('../controllers/auth.controller');
+const { register, login, getMe, refreshToken, logout, forgotPassword, resetPassword } = require('../controllers/auth.controller');
 const { protect } = require('../middleware/auth.middleware');
 const { authRateLimiter } = require('../middleware/rateLimiter');
 const { validate } = require('../middleware/validate.middleware');
@@ -23,6 +23,14 @@ router.post('/login', authRateLimiter, loginRules, validate, login);
 router.get('/me', protect, getMe);
 router.post('/refresh', refreshToken);
 router.post('/logout', protect, logout);
+router.post('/forgot-password', authRateLimiter, [
+  body('email').isEmail().normalizeEmail().withMessage('Valid email required'),
+], validate, forgotPassword);
+
+router.post('/reset-password', authRateLimiter, [
+  body('token').notEmpty().withMessage('Reset token required'),
+  body('password').isLength({ min: 8 }).withMessage('Password: min 8 chars'),
+], validate, resetPassword);
 
 // Google OAuth
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'], session: false }));

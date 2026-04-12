@@ -20,11 +20,18 @@ const chatSlice = createSlice({
     sessionId: `session_${Date.now()}`,
     isTyping: false,
     isOpen: false,
+    aiSuggestion: null,
   },
   reducers: {
-    toggleChat: (state) => { state.isOpen = !state.isOpen; },
+    toggleChat: (state, action) => { 
+      state.isOpen = action.payload !== undefined ? action.payload : !state.isOpen; 
+    },
+    setAiSuggestion: (state, action) => {
+      state.aiSuggestion = action.payload;
+    },
     addUserMessage: (state, action) => {
       state.messages.push({ id: Date.now().toString(), role: 'user', text: action.payload });
+      state.aiSuggestion = null; // Clear suggestion once used
     }
   },
   extraReducers: (builder) => {
@@ -50,5 +57,5 @@ const chatSlice = createSlice({
   },
 });
 
-export const { toggleChat, addUserMessage } = chatSlice.actions;
+export const { toggleChat, addUserMessage, setAiSuggestion } = chatSlice.actions;
 export default chatSlice.reducer;

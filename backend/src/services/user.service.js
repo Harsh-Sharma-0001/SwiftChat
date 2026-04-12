@@ -12,16 +12,15 @@ const getUserProfile = async (userId) => {
     .sort({ createdAt: -1 })
     .limit(12);
 
-  const [postsCount, followersCount, followingCount] = await Promise.all([
-    Post.countDocuments({ user: userId }),
-    Follow.countDocuments({ following: userId }),
-    Follow.countDocuments({ follower: userId })
-  ]);
-
   return {
     id: user._id, username: user.username, displayName: user.displayName, bio: user.bio,
     avatarUrl: user.avatarUrl, emotionVibe: user.emotionVibe, createdAt: user.createdAt,
-    _count: { posts: postsCount, followers: followersCount, following: followingCount },
+    isPrivate: user.isPrivate,
+    _count: { 
+      posts: await Post.countDocuments({ user: userId }), 
+      followers: user.followers.length, 
+      following: user.following.length 
+    },
     posts: posts.map(p => ({
       id: p._id, mediaUrl: p.mediaUrl, mediaType: p.mediaType, caption: p.caption, emotion: p.emotion, createdAt: p.createdAt
     }))
@@ -29,13 +28,14 @@ const getUserProfile = async (userId) => {
 };
 
 const updateUserProfile = async (userId, updateData, file) => {
-  const { displayName, bio, emotionVibe } = updateData;
+  const { displayName, bio, emotionVibe, email } = updateData;
   const avatarUrl = file ? `/uploads/${file.filename}` : undefined;
 
   const data = { displayName, bio, emotionVibe };
   if (avatarUrl) data.avatarUrl = avatarUrl;
+  if (email) data.email = email;
 
-  const user = await User.findByIdAndUpdate(userId, data, { new: true });
+  const user = await User.findByIdAndUpdate(userId, data, { new: true, runValidators: true });
   
   return { id: user._id, username: user.username, email: user.email, displayName: user.displayName, bio: user.bio, avatarUrl: user.avatarUrl, emotionVibe: user.emotionVibe };
 };
@@ -46,15 +46,40 @@ const toggleFollow = async (currentUserId, targetUserId) => {
   const target = await User.findById(targetUserId);
   if (!target) throw new AppError('User not found', StatusCodes.NOT_FOUND);
 
-  const existing = await Follow.findOne({ follower: currentUserId, following: targetUserId });
+  const isFollowing = target.followers.some(id => id.toString() === currentUserId.toString());
 
-  if (existing) {
-    await Follow.findByIdAndDelete(existing._id);
-    return { following: false, message: 'Unfollowed successfully' };
+  if (isFollowing) {
+    // Unfollow
+    await Promise.all([
+      User.findByIdAndUpdate(currentUserId, { $pull: { following: targetUserId } }),
+      User.findByIdAndUpdate(targetUserId, { $pull: { followers: currentUserId } }),
+      Follow.findOneAndDelete({ follower: currentUserId, following: targetUserId }) // Cleanup legacy collection
+    ]);
+    return { following: false, message: 'Synchronized: Unfollowed' };
   }
 
-  await Follow.create({ follower: currentUserId, following: targetUserId });
-  return { following: true, message: 'Followed successfully' };
+  // Follow
+  await Promise.all([
+    User.findByIdAndUpdate(currentUserId, { $addToSet: { following: targetUserId } }),
+    User.findByIdAndUpdate(targetUserId, { $addToSet: { followers: currentUserId } }),
+    Follow.create({ follower: currentUserId, following: targetUserId }) // Sync legacy collection
+  ]);
+  return { following: true, message: 'Synchronized: Following' };
+};
+
+const updateUserSettingsService = async (userId, settingsData) => {
+  const { isPrivate, notifications, aiInsights } = settingsData;
+  const update = {};
+  if (isPrivate !== undefined) {
+    update['settings.isPrivate'] = isPrivate;
+    update['isPrivate'] = isPrivate;
+  }
+  if (notifications !== undefined) update['settings.notifications'] = notifications;
+  if (aiInsights !== undefined) update['settings.aiInsights'] = aiInsights;
+
+  const user = await User.findByIdAndUpdate(userId, { $set: update }, { new: true });
+  if (!user) throw new AppError('User not found', StatusCodes.NOT_FOUND);
+  return user;
 };
 
 const searchUsersService = async (query) => {
@@ -65,18 +90,15 @@ const searchUsersService = async (query) => {
     $or: [{ username: queryRegex }, { displayName: queryRegex }]
   }).limit(20);
 
-  return Promise.all(users.map(async u => {
-    const followers = await Follow.countDocuments({ following: u._id });
-    return {
-      id: u._id, username: u.username, displayName: u.displayName, avatarUrl: u.avatarUrl, emotionVibe: u.emotionVibe,
-      _count: { followers }
-    };
+  return users.map(u => ({
+    id: u._id, username: u.username, displayName: u.displayName, avatarUrl: u.avatarUrl, emotionVibe: u.emotionVibe,
+    _count: { followers: u.followers.length }
   }));
 };
 
 const getConnectsList = async (currentUserId) => {
-  const followingList = await Follow.find({ follower: currentUserId }).select('following');
-  const followingIds = followingList.map(f => f.following);
+  const user = await User.findById(currentUserId);
+  const followingIds = user.following;
   
   const users = await User.find({
     _id: { $ne: currentUserId, $nin: followingIds }
@@ -87,4 +109,4 @@ const getConnectsList = async (currentUserId) => {
   }));
 };
 
-module.exports = { getUserProfile, updateUserProfile, toggleFollow, searchUsersService, getConnectsList };
+module.exports = { getUserProfile, updateUserProfile, toggleFollow, searchUsersService, getConnectsList, updateUserSettingsService };

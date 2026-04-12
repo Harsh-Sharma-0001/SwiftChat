@@ -5,6 +5,27 @@ import { Sparkles, Mail, Lock, User, AtSign, ArrowRight } from 'lucide-react';
 import { registerUser } from '../store/slices/authSlice';
 import toast from 'react-hot-toast';
 
+// ── 0.05-opacity star field ────────────────────────────────────────────────────
+function StarField() {
+  const stars = Array.from({ length: 55 }, (_, i) => ({
+    id: i,
+    size: Math.random() * 2 + 0.8,
+    top: `${Math.random() * 100}%`,
+    left: `${Math.random() * 100}%`,
+  }));
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+      {stars.map((s) => (
+        <div
+          key={s.id}
+          className="absolute rounded-full bg-white"
+          style={{ width: s.size, height: s.size, top: s.top, left: s.left, opacity: 0.05 }}
+        />
+      ))}
+    </div>
+  );
+}
+
 export default function Register() {
   const [formData, setFormData] = useState({ displayName: '', username: '', email: '', password: '' });
   const dispatch = useDispatch();
@@ -26,18 +47,26 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen bg-sc-bg flex flex-col justify-center items-center p-4 relative overflow-hidden">
-      <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[50%] bg-sc-cyan opacity-10 rounded-full blur-[100px] pointer-events-none"></div>
-      <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-sc-accent opacity-20 rounded-full blur-[100px] pointer-events-none"></div>
+    <div className="min-h-screen bg-[#060e20] flex flex-col justify-center items-center p-4 relative overflow-hidden">
+      {/* Radial accent glow */}
+      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.1) 0%, transparent 70%)' }} />
+
+      {/* 0.05 opacity star field */}
+      <StarField />
+
+      {/* Floating Star Background Element */}
+      <div className="absolute top-20 left-1/2 transform -translate-x-1/2 opacity-[0.05] shadow-glow pointer-events-none">
+        <Sparkles size={300} className="text-sc-accent-light blur-[1px]" />
+      </div>
 
       <div className="w-full max-w-md z-10 animate-fade-in relative">
-        <div className="glass-card p-10 backdrop-blur-md border-sc-cyan/20 shadow-glow relative z-10">
+        <div className="glass-card p-10 backdrop-blur-md shadow-glow relative z-10">
           <div className="text-center mb-8">
             <div className="mx-auto w-12 h-12 bg-gradient-to-br from-sc-cyan to-sc-accent-light rounded-xl flex items-center justify-center mb-4 transform rotate-12 shadow-glow-sm">
               <Sparkles className="text-white" size={24} />
             </div>
-            <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-sc-muted mb-2">Create Identity</h1>
-            <p className="text-sc-muted text-sm">Join the network. Share the vibe.</p>
+            <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-sc-muted mb-2">Create Account</h1>
+            <p className="text-sc-muted text-sm">Join the network and share your vibe.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -63,13 +92,13 @@ export default function Register() {
             </div>
 
             <button type="submit" disabled={status === 'loading'} className="gradient-btn w-full py-3.5 mt-4 flex items-center justify-center gap-2 group">
-              {status === 'loading' ? 'Syncing...' : 'Manifest Account'}
+              {status === 'loading' ? 'Signing Up...' : 'Sign Up'}
               {!status === 'loading' && <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />}
             </button>
           </form>
 
           <p className="text-center text-sm text-sc-muted mt-8">
-            Neural link already established? <Link to="/login" className="text-sc-accent-light font-semibold hover:underline">Login here</Link>
+            Already have an account? <Link to="/login" className="text-sc-accent-light font-semibold hover:underline">Login here</Link>
           </p>
         </div>
       </div>

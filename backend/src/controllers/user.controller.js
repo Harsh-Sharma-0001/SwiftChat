@@ -1,6 +1,7 @@
 // src/controllers/user.controller.js
-const { getUserProfile, updateUserProfile, toggleFollow, searchUsersService, getConnectsList } = require('../services/user.service');
-const { sendSuccess } = require('../utils/response');
+const { getUserProfile, updateUserProfile, toggleFollow: toggleFollowService, searchUsersService, getConnectsList } = require('../services/user.service');
+const postService = require('../services/post.service');
+const { sendSuccess, sendPaginated } = require('../utils/response');
 
 // GET /api/users/:id
 const getUserById = async (req, res) => {
@@ -14,10 +15,17 @@ const updateUser = async (req, res) => {
   sendSuccess(res, { user: safeUser }, 'Profile updated');
 };
 
-// POST /api/users/follow
-const followUser = async (req, res) => {
-  const result = await toggleFollow(req.user.id, req.body.userId);
+// POST /api/users/follow/:id
+const toggleFollow = async (req, res) => {
+  const result = await toggleFollowService(req.user.id, req.params.id);
   sendSuccess(res, { following: result.following }, result.message);
+};
+
+// PATCH /api/users/settings
+const updateSettings = async (req, res) => {
+  const { updateUserSettingsService } = require('../services/user.service');
+  const user = await updateUserSettingsService(req.user.id, req.body);
+  sendSuccess(res, { settings: user.settings, isPrivate: user.isPrivate }, 'Settings synchronized');
 };
 
 // GET /api/users/search
@@ -32,4 +40,12 @@ const getConnects = async (req, res) => {
   sendSuccess(res, { users });
 };
 
-module.exports = { getUserById, updateUser, followUser, searchUsers, getConnects };
+// GET /api/users/:id/posts
+const getUserPosts = async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const result = await postService.getUserPosts(req.params.id, req.user.id, page, limit);
+  sendPaginated(res, result.posts, result.pagination, 'User posts fetched');
+};
+
+module.exports = { getUserById, updateUser, toggleFollow, searchUsers, getConnects, getUserPosts, updateSettings };

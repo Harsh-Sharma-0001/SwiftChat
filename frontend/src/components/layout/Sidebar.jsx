@@ -2,12 +2,20 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { Home, Compass, PlusSquare, MessageSquare, User, Zap, LogOut } from 'lucide-react';
 import { logout } from '../../store/slices/authSlice';
+import { useEffect, useState } from 'react';
 
 export default function Sidebar() {
   const dispatch = useDispatch();
   const location = useLocation();
   const { user } = useSelector(state => state.auth);
   const { activeEmotion } = useSelector(state => state.ui);
+  const [initialized, setInitialized] = useState(false);
+
+  // After mount, mark as initialized so we can show Neural Silence instead of Loading...
+  useEffect(() => {
+    const timer = setTimeout(() => setInitialized(true), 800);
+    return () => clearTimeout(timer);
+  }, []);
 
   const getEmotionColor = (vibe) => {
     switch(vibe) {
@@ -28,8 +36,15 @@ export default function Sidebar() {
     { name: 'Profile', path: `/profile/${user?.id}`, icon: User },
   ];
 
+  const currentVibe = activeEmotion?.vibe || user?.emotionVibe;
+  const vibeLabel = currentVibe
+    ? `Vibe: ${currentVibe}`
+    : initialized
+      ? '— Neural Silence —'
+      : 'Vibe: ...';
+
   return (
-    <aside className="border-r border-sc-border bg-sc-surface h-full flex flex-col py-6">
+    <aside className="bg-[#081329]/60 backdrop-blur-[30px] shadow-[0_0_40px_rgba(0,0,0,0.4)] h-full flex flex-col py-6 z-10 transition-all duration-300">
       <div className="px-6 mb-8">
         <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-accent">
           SwiftChat
@@ -40,14 +55,15 @@ export default function Sidebar() {
         <p className="text-xs text-sc-muted font-bold tracking-wider uppercase mb-2">Emotion Pulse</p>
         <div className="flex items-center gap-2 text-sm font-medium">
           <span className="relative flex h-3 w-3">
-            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${getEmotionColor(activeEmotion?.vibe || user?.emotionVibe)?.replace('text-', 'bg-')}`}></span>
-            <span className={`relative inline-flex rounded-full h-3 w-3 ${getEmotionColor(activeEmotion?.vibe || user?.emotionVibe)?.replace('text-', 'bg-')}`}></span>
+            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${(getEmotionColor(currentVibe) || 'text-sc-accent-light').replace('text-', 'bg-')}`}></span>
+            <span className={`relative inline-flex rounded-full h-3 w-3 ${(getEmotionColor(currentVibe) || 'text-sc-accent-light').replace('text-', 'bg-')}`}></span>
           </span>
-          <span className={getEmotionColor(activeEmotion?.vibe || user?.emotionVibe)}>
-            Vibe: {activeEmotion?.vibe || user?.emotionVibe || 'Establishing link...'}
+          <span className={currentVibe ? getEmotionColor(currentVibe) : initialized ? 'text-sc-muted italic text-xs' : 'text-sc-muted'}>
+            {vibeLabel}
           </span>
         </div>
       </div>
+
 
       <nav className="flex-1 px-4 flex flex-col gap-2">
         {navItems.map((item) => {

@@ -80,7 +80,7 @@ Return ONLY valid JSON in this format: {"emotion": "primary emotion name", "scor
                 tags=result.get("tags", [emotion])
             )
         except Exception as e:
-            print(f"NVIDIA NIM emotion error: {e}")
+            pass
     
     # Keyword-based fallback
     for keyword, vibe in EMOTION_VIBES.items():

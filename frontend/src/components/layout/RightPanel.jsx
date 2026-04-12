@@ -8,6 +8,7 @@ export default function RightPanel() {
   const dispatch = useDispatch();
   const [trending, setTrending] = useState([]);
   const [connects, setConnects] = useState([]);
+  const [panelLoaded, setPanelLoaded] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -23,6 +24,8 @@ export default function RightPanel() {
       } catch (err) {
         if (err.code === 'ERR_CANCELED' || err.name === 'CanceledError') return;
         console.error('Failed to fetch right panel data', err);
+      } finally {
+        setPanelLoaded(true);
       }
     };
     fetchPanelData();
@@ -31,13 +34,13 @@ export default function RightPanel() {
   }, []);
 
   return (
-    <aside className="border-l border-sc-border bg-sc-surface h-full flex flex-col pt-6 pb-4 px-6 overflow-y-auto">
+    <aside className="bg-[#081329]/60 backdrop-blur-[30px] shadow-[0_0_40px_rgba(0,0,0,0.4)] h-full flex flex-col pt-6 pb-4 px-6 overflow-y-auto z-10 transition-all duration-300">
       
       {/* Trending Emotions */}
       <div className="mb-8">
         <h3 className="flex items-center gap-2 font-bold mb-4">
           <Sparkles className="text-sc-accent-light" size={18} />
-          Trending Emotions
+          Trending Moods
         </h3>
         <div className="flex flex-col gap-4">
           {trending.length > 0 ? trending.map((t, idx) => (
@@ -59,33 +62,38 @@ export default function RightPanel() {
                 />
               </div>
             </div>
-          )) : (
-            <div className="text-sm text-sc-muted">Analyzing the sentient stream...</div>
+          )) : panelLoaded ? (
+            <div className="text-center py-4">
+              <p className="text-xs text-sc-muted italic tracking-wider">— Neural Silence —</p>
+              <p className="text-[10px] text-sc-muted/60 mt-1">No active frequencies detected.</p>
+            </div>
+          ) : (
+            <div className="text-sm text-sc-muted animate-pulse">Scanning...</div>
           )}
         </div>
       </div>
 
-      {/* Sentient Stream */}
+      {/* Trending Topics */}
       <div className="mb-8">
         <h3 className="flex items-center gap-2 font-bold mb-4">
           <Activity className="text-sc-pink" size={18} />
-          Sentient Stream
+          Your Feed Trends
         </h3>
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-1">
-            <div className="flex justify-between text-sm border-b-2 border-sc-pink pb-1">
+            <div className="flex justify-between text-sm pb-1">
               <span className="text-sc-text">#EuphoricRhythms</span>
               <span className="text-sc-pink text-[10px] uppercase font-bold">Hot</span>
             </div>
           </div>
           <div className="flex flex-col gap-1 mt-2">
-            <div className="flex justify-between text-sm border-b-2 border-sc-cyan pb-1 w-[80%]">
+            <div className="flex justify-between text-sm pb-1 w-[80%]">
               <span className="text-sc-text lg:truncate">#DeepFocusMode</span>
               <span className="text-sc-cyan text-[10px] uppercase font-bold">Growing</span>
             </div>
           </div>
           <div className="flex flex-col gap-1 mt-2">
-            <div className="flex justify-between text-sm border-b-2 border-sc-accent-light pb-1 w-[60%]">
+            <div className="flex justify-between text-sm pb-1 w-[60%]">
               <span className="text-sc-text lg:truncate">#SolsticeVibe</span>
               <span className="text-sc-accent-light text-[10px] uppercase font-bold">Trending</span>
             </div>
@@ -103,13 +111,13 @@ export default function RightPanel() {
           {connects.length > 0 ? connects.map((user) => (
             <div key={user.id} className="flex items-center justify-between">
               <div className="flex items-center gap-3 w-4/5">
-                <div className="w-8 h-8 rounded-full bg-sc-hover border border-sc-border overflow-hidden relative flex-shrink-0">
+                <div className="w-8 h-8 rounded-full bg-sc-hover overflow-hidden relative flex-shrink-0">
                   {user.avatarUrl ? (
                     <img src={user.avatarUrl} alt={user.username} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-xs font-bold">{user.username[0]}</div>
                   )}
-                  <div className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-green-400 border border-sc-bg"></div>
+                  <div className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-green-400"></div>
                 </div>
                 <div className="flex flex-col truncate w-full">
                   <span className="text-sm font-semibold truncate">{user.displayName}</span>
@@ -120,8 +128,13 @@ export default function RightPanel() {
                 <Users size={16} />
               </button>
             </div>
-          )) : (
-            <div className="text-sm text-sc-muted">Finding connections...</div>
+          )) : panelLoaded ? (
+            <div className="text-center py-4">
+              <p className="text-xs text-sc-muted italic tracking-wider">— Neural Silence —</p>
+              <p className="text-[10px] text-sc-muted/60 mt-1">No connections in range.</p>
+            </div>
+          ) : (
+            <div className="text-sm text-sc-muted animate-pulse">Scanning...</div>
           )}
         </div>
       </div>
@@ -137,7 +150,7 @@ export default function RightPanel() {
         </p>
         <button 
           onClick={() => dispatch(toggleChat())}
-          className="w-full bg-sc-hover border border-sc-border hover:border-sc-accent rounded-xl px-3 py-2 text-xs flex justify-between items-center text-sc-muted transition-colors"
+          className="w-full bg-sc-hover hover: rounded-xl px-3 py-2 text-xs flex justify-between items-center text-sc-muted transition-colors"
         >
           <span>Message AI...</span>
           <Send size={14} className="text-sc-accent-light" />

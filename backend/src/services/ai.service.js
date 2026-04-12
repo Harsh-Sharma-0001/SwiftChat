@@ -23,15 +23,15 @@ const aiRequest = async (url, data, retries = 2) => {
   }
 };
 
-const generateCaption = async (prompt, tone, imageUrl) => {
-  const cacheKey = `caption:${tone}:${prompt?.slice(0, 50)}`;
+const generateCaption = async (prompt, tone, imageUrl, image) => {
+  const cacheKey = `caption:${tone}:${prompt?.slice(0, 50)}:${image ? 'v' : 't'}`;
   try {
     const cached = await redisClient.get(cacheKey);
     if (cached) return JSON.parse(cached);
   } catch (_) {}
 
   try {
-    const result = await aiRequest(`${process.env.AI_CAPTION_SERVICE_URL}/generate`, { prompt, tone, imageUrl });
+    const result = await aiRequest(`${process.env.AI_CAPTION_SERVICE_URL}/generate`, { prompt, tone, imageUrl, image });
     try { await redisClient.setex(cacheKey, 300, JSON.stringify(result)); } catch (_) {}
     return result;
   } catch (err) {
@@ -61,12 +61,28 @@ const emotionSearch = async (query, limit) => {
   }
 };
 
-const chat = async (userId, message, sessionId) => {
+const User = require('../models/User.model');
+
+const chat = async (userId, message, sessionId, context) => {
   sessionId = sessionId || uuidv4();
   let chatLog = await ChatLog.findOne({ userId, sessionId });
   if (!chatLog) {
     chatLog = new ChatLog({ userId, sessionId, messages: [] });
   }
+
+  // Identity Grounding: Fetch Bio + Last 5 Captions
+  const [user, posts] = await Promise.all([
+    User.findById(userId).select('bio displayName username'),
+    Post.find({ user: userId }).sort({ createdAt: -1 }).limit(5).select('caption')
+  ]);
+  
+  const captions = posts.map(p => p.caption).filter(Boolean);
+  const identity_grounding = {
+    bio: user?.bio || "No bio yet on this frequency.",
+    recent_captions: captions,
+    displayName: user?.displayName,
+    username: user?.username
+  };
 
   chatLog.messages.push({ role: 'user', content: message });
 
@@ -75,6 +91,7 @@ const chat = async (userId, message, sessionId) => {
       message,
       history: chatLog.messages.slice(-10),
       userId,
+      context: { ...context, identity_grounding },
     });
 
     chatLog.messages.push({ role: 'assistant', content: result.response });

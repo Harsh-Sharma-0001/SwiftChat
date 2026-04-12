@@ -60,7 +60,8 @@ app.use(passport.initialize());
 app.use('/api/', rateLimiter);
 
 // ─── Static files (uploads) ──────────────────────────────────────────────────
-app.use('/uploads', express.static('uploads'));
+const path = require('path');
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 // ─── Health Check ────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {

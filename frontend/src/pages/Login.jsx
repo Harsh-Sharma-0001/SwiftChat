@@ -5,6 +5,29 @@ import { Sparkles, Mail, Lock, ArrowRight } from 'lucide-react';
 import { loginUser } from '../store/slices/authSlice';
 import toast from 'react-hot-toast';
 
+// ── 0.05-opacity star field ────────────────────────────────────────────────────
+function StarField() {
+  const stars = Array.from({ length: 55 }, (_, i) => ({
+    id: i,
+    size: Math.random() * 2 + 0.8,
+    top: `${Math.random() * 100}%`,
+    left: `${Math.random() * 100}%`,
+    delay: `${Math.random() * 5}s`,
+    duration: `${3 + Math.random() * 4}s`,
+  }));
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+      {stars.map((s) => (
+        <div
+          key={s.id}
+          className="absolute rounded-full bg-white"
+          style={{ width: s.size, height: s.size, top: s.top, left: s.left, opacity: 0.05 }}
+        />
+      ))}
+    </div>
+  );
+}
+
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -24,20 +47,26 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-sc-bg flex flex-col justify-center items-center p-4 relative overflow-hidden">
-      {/* Background decorations */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-sc-accent opacity-20 rounded-full blur-[100px] pointer-events-none"></div>
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-sc-pink opacity-20 rounded-full blur-[100px] pointer-events-none"></div>
+    <div className="min-h-screen bg-[#060e20] flex flex-col justify-center items-center p-4 relative overflow-hidden">
+      {/* Radial accent glow */}
+      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.1) 0%, transparent 70%)' }} />
+
+      {/* 0.05 opacity star field */}
+      <StarField />
+
+      {/* Floating Star Background Element */}
+      <div className="absolute top-20 left-1/2 transform -translate-x-1/2 opacity-[0.05] shadow-glow pointer-events-none">
+        <Sparkles size={300} className="text-sc-accent-light blur-[1px]" />
+      </div>
 
       <div className="w-full max-w-md z-10 animate-fade-in relative">
-        <div className="absolute -top-12 -left-12 rotate-12 opacity-50">
-           <Sparkles size={100} className="text-sc-accent-light blur-[2px]" />
-        </div>
-        
-        <div className="glass-card p-10 backdrop-blur-md border-sc-accent-light/20 relative z-10 shadow-glow">
+        <div className="glass-card p-10 backdrop-blur-md relative z-10 shadow-glow">
           <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-accent mb-2">SwiftChat</h1>
-            <p className="text-sc-muted text-sm font-medium tracking-wide">Enter the Sentient Prism</p>
+            <div className="mx-auto w-12 h-12 bg-gradient-to-br from-sc-cyan to-sc-accent-light rounded-xl flex items-center justify-center mb-4 transform rotate-12 shadow-glow-sm">
+              <Sparkles className="text-white" size={24} />
+            </div>
+            <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-sc-muted mb-2">Welcome Back</h1>
+            <p className="text-sc-muted text-sm font-medium tracking-wide">Login to continue</p>
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-5">
@@ -68,7 +97,7 @@ export default function Login() {
                 <input type="checkbox" className="accent-sc-accent w-3 h-3" />
                 Stay connected
               </label>
-              <a href="#" className="text-sc-accent-light hover:underline">Lost signal?</a>
+              <Link to="/forgot-password" virtual="true" className="text-sc-accent-light hover:underline font-medium">Forgot Password?</Link>
             </div>
 
             <button 
@@ -76,13 +105,13 @@ export default function Login() {
               disabled={status === 'loading'}
               className="gradient-btn w-full py-3.5 mt-2 flex items-center justify-center gap-2 group shadow-glow-pink"
             >
-              {status === 'loading' ? 'Authenticating...' : 'Initialize Connection'}
+              {status === 'loading' ? 'Authenticating...' : 'Login'}
               {!status === 'loading' && <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />}
             </button>
           </form>
 
           <p className="text-center text-sm text-sc-muted mt-8">
-            New to the stream? <Link to="/register" className="text-sc-cyan font-semibold hover:underline">Manifest an Echo</Link>
+            Don't have an account? <Link to="/register" className="text-sc-cyan font-semibold hover:underline">Sign Up</Link>
           </p>
         </div>
       </div>

@@ -5,8 +5,8 @@ const { AppError } = require('../middleware/errorHandler');
 const { StatusCodes } = require('http-status-codes');
 
 const generateCaption = async (req, res) => {
-  const { prompt, tone = 'witty', imageUrl } = req.body;
-  const result = await aiService.generateCaption(prompt, tone, imageUrl);
+  const { prompt, tone = 'witty', imageUrl, image } = req.body;
+  const result = await aiService.generateCaption(prompt, tone, imageUrl, image);
   sendSuccess(res, result, 'Captions generated');
 };
 
@@ -19,10 +19,10 @@ const emotionSearch = async (req, res) => {
 };
 
 const chat = async (req, res) => {
-  const { message, sessionId } = req.body;
+  const { message, sessionId, context } = req.body;
   if (!message) throw new AppError('Message required', StatusCodes.BAD_REQUEST);
 
-  const result = await aiService.chat(req.user.id, message, sessionId);
+  const result = await aiService.chat(req.user.id, message, sessionId, context);
   sendSuccess(res, result, 'Chat response');
 };
 
