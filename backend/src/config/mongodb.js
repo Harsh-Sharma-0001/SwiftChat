@@ -1,5 +1,6 @@
 // src/config/mongodb.js — Mongoose MongoDB connection
 const mongoose = require('mongoose');
+mongoose.set('bufferCommands', false);
 const logger = require('./logger');
 
 async function connectMongoDB(retries = 5) {
