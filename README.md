@@ -110,8 +110,3 @@ docker-compose up --build -d
 - **API Docs**: [http://localhost/api-docs/](http://localhost/api-docs/)
 - **AI Services Status**: [http://localhost:8004/health](http://localhost:8004/health)
 
----
-
-<div align="center">
-  <sub>Built by Antigravity in the Heart of the Digital Nebula</sub>
-</div>
