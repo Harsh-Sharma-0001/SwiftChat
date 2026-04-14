@@ -52,8 +52,6 @@ def get_embedding(text: str) -> List[float]:
 def get_mongo_collection():
     uri = os.getenv("MONGODB_URI")
     db_client = pymongo.MongoClient(uri)
-    # The Mongoose models will save documents inside 'posts' and 'users' collections
-    # of the database specified in the URI
     db = db_client.get_default_database()
     return db.posts
 
@@ -70,12 +68,11 @@ async def semantic_search(req: SearchRequest):
     if client:
         try:
             posts_collection = get_mongo_collection()
-            
+
             # Base match criteria
             match_criteria = {"isPublic": True, "isFlagged": False}
-            
+
             # Exact emotion matching for mood/tone chips (Case-insensitive Regex)
-            # The query can be a single word mood like "Sarcastic"
             match_criteria["emotion"] = {"$regex": f"^{req.query}$", "$options": "i"}
 
             if req.user_id:
@@ -85,7 +82,7 @@ async def semantic_search(req: SearchRequest):
                     pass
 
             rows = []
-            
+
             # PHASE 1: Try direct match on emotion field (for chips)
             rows = list(posts_collection.find(match_criteria).sort("createdAt", -1).limit(req.limit))
             for r in rows:
@@ -96,14 +93,14 @@ async def semantic_search(req: SearchRequest):
                     r["user"] = {
                         "username": author.get("username"),
                         "displayName": author.get("displayName"),
-                        "avatarUrl": author.get("avatarUrl")
+                        "avatarUrl": author.get("avatarUrl"),
                     }
                 else:
                     r["user"] = {"username": "unknown", "displayName": "Unknown User"}
                 r["likesCount"] = len(r.get("likes", []))
                 r["commentsCount"] = len(r.get("comments", []))
 
-            # PHASE 2: If no matches, try semantic search (if not a specific mood chip)
+            # PHASE 2: If no matches, try semantic search
             if not rows:
                 try:
                     embedding = get_embedding(req.query)
@@ -150,8 +147,8 @@ async def semantic_search(req: SearchRequest):
                 except Exception as e:
                     print(f"[SEARCH] Semantic search failed: {e}")
 
+            # PHASE 3: AI Fallback — generate 4 synthetic posts if still no results
             if not rows:
-                # AI FALLBACK: Generate exactly 4 synthetic posts
                 print(f"[SEARCH] No real results for '{req.query}'. Triggering AI Fallback.")
                 final_rows = []
                 fallback_models = [
@@ -161,7 +158,6 @@ async def semantic_search(req: SearchRequest):
                     "ibm/granite-3.3-8b-instruct",
                 ]
 
-                # Specific prompt as requested
                 prompt = f"Generate 4 short, engaging social media post captions for the mood: {req.query}. Return only a JSON array of 4 strings, nothing else."
 
                 content = None
@@ -171,13 +167,14 @@ async def semantic_search(req: SearchRequest):
                             model=model,
                             messages=[
                                 {"role": "system", "content": "You are a creative social media assistant. Return only a JSON array of strings."},
-                                {"role": "user", "content": prompt}
+                                {"role": "user", "content": prompt},
                             ],
                             temperature=0.8,
-                            max_tokens=500
+                            max_tokens=500,
                         )
                         content = response.choices[0].message.content.strip()
-                        if content: break
+                        if content:
+                            break
                     except Exception as e:
                         print(f"[SEARCH AI] Fallback {model} failed: {e}")
                         continue
@@ -197,14 +194,14 @@ async def semantic_search(req: SearchRequest):
                                     "id": f"synthetic-{uuid.uuid4().hex[:8]}",
                                     "caption": caption,
                                     "image": f"https://picsum.photos/seed/{req.query.lower()}{i}/400/400",
-                                    "mediaUrl": f"https://picsum.photos/seed/{req.query.lower()}{i}/400/400", # Compatibility
+                                    "mediaUrl": f"https://picsum.photos/seed/{req.query.lower()}{i}/400/400",
                                     "emotion": req.query,
                                     "isSynthetic": True,
-                                    "author": { "displayName": "ARIA", "username": "aria_system" },
-                                    "user": { "displayName": "ARIA", "username": "aria_system" }, # Compatibility
+                                    "author": {"displayName": "ARIA", "username": "aria_system"},
+                                    "user": {"displayName": "ARIA", "username": "aria_system"},
                                     "createdAt": "Just now",
                                     "likesCount": 42,
-                                    "commentsCount": 0
+                                    "commentsCount": 0,
                                 })
                     except Exception as e:
                         print(f"[SEARCH AI] JSON Parse Error: {e}")
@@ -212,14 +209,13 @@ async def semantic_search(req: SearchRequest):
                 return SearchResponse(posts=final_rows, total=len(final_rows))
 
             return SearchResponse(posts=rows[:req.limit], total=len(rows))
+
         except Exception as e:
             print(f"[SEARCH] Critical error: {e}")
             return SearchResponse(posts=[], total=0)
 
-    # Global fallback
+    # Fallback when NVIDIA client is not available
     return SearchResponse(posts=[], total=0)
-
-    return SearchResponse(posts=[], query=req.query, total=0, mode="unavailable")
 
 
 if __name__ == "__main__":

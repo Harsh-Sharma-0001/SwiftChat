@@ -77,7 +77,6 @@ async def chat(req: ChatRequest):
     user_email = user_context.get("email", "hidden")
     identity = user_context.get("identity_grounding", {})
     bio = user_context.get("bio") or identity.get("bio", "No bio provided.")
-    recent_captions = identity.get("recent_captions", [])
 
     # Enhanced System Prompt - FORCED PERSONALIZATION PROTOCOL
     contextual_system_prompt = SYSTEM_PROMPT + (
@@ -94,7 +93,7 @@ async def chat(req: ChatRequest):
     # 1) Fetch Context from Search Service
     context_text = ""
     is_activity_query = any(k in req.message.lower() for k in ["my activity", "my posts", "latest posts", "what did i post"])
-    
+
     try:
         search_url = os.getenv("SEARCH_SERVICE_URL", "http://swiftchat_search_service:8003/search")
         api_key_val = os.getenv("API_KEY", "swiftchat-secret-key")
@@ -145,7 +144,6 @@ async def chat(req: ChatRequest):
         for model in fallback_models:
             print(f"[ARIA] Attempting fallback model: {model}")
             try:
-                # Use a fresh client with explicit timeout for each attempt as requested
                 async with httpx.AsyncClient(timeout=15.0) as http_client:
                     client = AsyncOpenAI(api_key=NVIDIA_API_KEY, base_url=NVIDIA_BASE_URL, http_client=http_client)
                     response = await client.chat.completions.create(
@@ -172,4 +170,3 @@ async def chat(req: ChatRequest):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=int(os.getenv("PORT_CHAT", 8004)), reload=True)
-
