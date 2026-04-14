@@ -52,7 +52,10 @@ Here is a look at the active Sentient Prism, visualizing live telemetry and neur
 
 ### Identity-Grounded Chat (ARIA)
 
-<img src="./frontend/public/images/readme/chat_screenshot.png" width="100%" alt="ARIA Chat Interface" />
+<img width="100%" height="473" alt="19" src="https://github.com/user-attachments/assets/3e0569cb-5d8f-425a-a9df-76739fc0b337" />
+<img width="100%" height="536" alt="20" src="https://github.com/user-attachments/assets/31d13381-f090-4244-bc0d-9fb6d4df611b" />
+
+
 
 ### Live Flow State (Cognition %)
 
