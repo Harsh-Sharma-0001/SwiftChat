@@ -1,4 +1,4 @@
-<div align="center">
+<img width="959" height="536" alt="18" src="https://github.com/user-attachments/assets/5bb5ad8c-0792-41d4-b83c-23ec443145d8" /><div align="center">
   <img src="https://github.com/user-attachments/assets/d30ba98d-52fc-4e28-ba67-4cb5e8a0efc9" width="180" alt="SwiftChat Logo" />
   
   # SwiftChat | The Sentient Prism 🌌
@@ -53,13 +53,14 @@ Here is a look at the active Sentient Prism, visualizing live telemetry and neur
 ### Identity-Grounded Chat (ARIA)
 
 <img width="100%" height="473" alt="19" src="https://github.com/user-attachments/assets/3e0569cb-5d8f-425a-a9df-76739fc0b337" />
-<img width="100%" height="536" alt="20" src="https://github.com/user-attachments/assets/31d13381-f090-4244-bc0d-9fb6d4df611b" />
+<img width="100%" height="473" alt="20" src="https://github.com/user-attachments/assets/31d13381-f090-4244-bc0d-9fb6d4df611b" />
 
 
+### Live Flow State (Cognition %) 
 
-### Live Flow State (Cognition %)
-
-<img src="./frontend/public/images/readme/telemetry_screenshot.png" width="100%" alt="Cognition Telemetry Visualization" />
+<img width="100%" height="473" alt="16" src="https://github.com/user-attachments/assets/0d7125ed-f1bc-4bd0-acff-27ceda039f79" />
+<img width="100%" height="473" alt="17" src="https://github.com/user-attachments/assets/b584489d-b884-4b25-b3f5-01835bba65e1" />
+<img width="100%" height="473" alt="18" src="https://github.com/user-attachments/assets/fe8a5936-ae88-43f7-bbe9-ade8e1e314fa" />
 
 ---
 
