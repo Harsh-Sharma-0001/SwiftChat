@@ -2,14 +2,28 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
 
-export const sendMessage = createAsyncThunk('chat/sendMessage', async ({ message, sessionId }, { rejectWithValue }) => {
+export const sendMessage = createAsyncThunk('chat/sendMessage', async ({ message, sessionId, extraContext = {} }, { getState, rejectWithValue }) => {
   try {
-    const res = await api.post('/ai/chat', { message, sessionId });
+    const { auth } = getState();
+    const user = auth.user;
+    
+    // Core identity grounding context
+    const context = {
+      displayName: user?.displayName || user?.username || 'User',
+      username: user?.username,
+      email: user?.email,
+      bio: user?.bio,
+      currentPath: window.location.pathname,
+      ...extraContext
+    };
+
+    const res = await api.post('/ai/chat', { message, sessionId, context });
     return res.data;
   } catch (err) {
     return rejectWithValue(err.response?.data?.message || 'Chat failed');
   }
 });
+
 
 const chatSlice = createSlice({
   name: 'chat',

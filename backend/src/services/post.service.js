@@ -10,7 +10,8 @@ const { AppError } = require('../middleware/errorHandler');
 const FEED_CACHE_TTL = 60; // 60 seconds
 
 const createPost = async (userId, data, file) => {
-  const { caption, emotion, moodScore, location } = data;
+  const emotion = data.emotion || data.tone || null;
+  const { caption, moodScore, location } = data;
   const mediaUrl = file ? `/uploads/${file.filename}` : null;
   const mediaType = file ? (file.mimetype.startsWith('video') ? 'video' : 'image') : null;
 

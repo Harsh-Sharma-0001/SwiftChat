@@ -101,6 +101,7 @@ function ReportModal({ postId, onClose }) {
 export default function PostCard({ post, onDelete }) {
   const dispatch = useDispatch();
   const { user: currentUser } = useSelector(state => state.auth);
+  const author = post.user || post.author;
 
   const [isLiked, setIsLiked] = useState(post.isLiked);
   const [likeCount, setLikeCount] = useState(post._count?.likes || 0);
@@ -117,7 +118,7 @@ export default function PostCard({ post, onDelete }) {
   const menuRef = useRef(null);
   const commentInputRef = useRef(null);
 
-  const isOwnPost = currentUser?.id === (post.user?.id || post.user?._id?.toString());
+  const isOwnPost = currentUser?.id === (author?.id || author?._id?.toString());
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -214,7 +215,8 @@ export default function PostCard({ post, onDelete }) {
       {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />}
       {showReportModal && <ReportModal postId={post.id || post._id} onClose={() => setShowReportModal(false)} />}
 
-      <div className="post-card group flex gap-4">
+      <div className="post-card group flex gap-4 relative">
+
         {/* Inset Glow Bar */}
         <div className={`w-[2px] rounded-full shrink-0 ${getGlowColorBase(post.emotion)}`}></div>
 
@@ -224,17 +226,17 @@ export default function PostCard({ post, onDelete }) {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-sc-hover overflow-hidden">
-                {post.user?.avatarUrl ? (
-                  <img src={post.user.avatarUrl} alt={post.user.username} className="w-full h-full object-cover" />
+                {author?.avatarUrl ? (
+                  <img src={author.avatarUrl} alt={author.username} className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center font-bold text-lg">
-                    {post.user?.username?.[0]?.toUpperCase()}
+                    {author?.username?.[0]?.toUpperCase()}
                   </div>
                 )}
               </div>
               <div className="flex flex-col">
                 <div className="flex items-center gap-2">
-                  <span className="font-bold text-sc-text hover:underline cursor-pointer">{post.user?.displayName}</span>
+                  <span className="font-bold text-sc-text hover:underline cursor-pointer">{author?.displayName}</span>
                   {post.emotion && (
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${getMoodColor(post.emotion)}`}>
                       {post.emotion}
@@ -242,7 +244,7 @@ export default function PostCard({ post, onDelete }) {
                   )}
                 </div>
                 <div className="flex flex-col text-xs text-sc-muted">
-                  <span>@{post.user?.username} • {formatDistanceToNow(new Date(post.createdAt))}</span>
+                  <span>@{author?.username} • {formatDistanceToNow(new Date(post.createdAt))}</span>
                 </div>
               </div>
             </div>
@@ -323,8 +325,14 @@ export default function PostCard({ post, onDelete }) {
               </button>
             </div>
 
-            {/* AI Generator Badge */}
-            {(post.caption?.includes('✨') || post.emotion) ? (
+            {/* AI Generator / Synthetic Badge */}
+            {post.isSynthetic ? (
+              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest text-white shadow-[0_0_15px_rgba(124,58,237,0.4)]"
+                   style={{ background: 'rgba(124, 58, 237, 0.3)', backdropFilter: 'blur(10px)', border: '1px solid rgba(139, 92, 246, 0.4)' }}>
+                <Sparkles size={10} className="text-purple-300 animate-pulse" />
+                AI Generated
+              </div>
+            ) : (post.caption?.includes('✨') || post.emotion) ? (
               <div className="flex items-center gap-1.5 px-3 py-1 bg-sc-hover rounded-full text-xs text-sc-muted">
                 <Sparkles size={12} className="text-sc-accent" />
                 AI Assisted

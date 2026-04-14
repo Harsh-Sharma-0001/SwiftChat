@@ -100,6 +100,7 @@ export default function CreatePost() {
     const formData = new FormData();
     if (caption) formData.append('caption', caption);
     if (file) formData.append('media', file);
+    if (tone) formData.append('emotion', tone);
 
     try {
       const res = await api.post('/posts', formData, {

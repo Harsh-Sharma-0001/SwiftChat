@@ -13,8 +13,14 @@ const getUserProfile = async (userId) => {
     .limit(12);
 
   return {
-    id: user._id, username: user.username, displayName: user.displayName, bio: user.bio,
-    avatarUrl: user.avatarUrl, emotionVibe: user.emotionVibe, createdAt: user.createdAt,
+    id: user._id, 
+    username: user.username, 
+    email: user.email, 
+    displayName: user.displayName, 
+    bio: user.bio,
+    avatarUrl: user.avatarUrl, 
+    emotionVibe: user.emotionVibe, 
+    createdAt: user.createdAt,
     isPrivate: user.isPrivate,
     _count: { 
       posts: await Post.countDocuments({ user: userId }), 
@@ -35,10 +41,26 @@ const updateUserProfile = async (userId, updateData, file) => {
   if (avatarUrl) data.avatarUrl = avatarUrl;
   if (email) data.email = email;
 
-  const user = await User.findByIdAndUpdate(userId, data, { new: true, runValidators: true });
-  
-  return { id: user._id, username: user.username, email: user.email, displayName: user.displayName, bio: user.bio, avatarUrl: user.avatarUrl, emotionVibe: user.emotionVibe };
+  // Use explicit $set for clarity and reliability
+  const updatedUser = await User.findByIdAndUpdate(
+    userId, 
+    { $set: data }, 
+    { new: true, runValidators: true }
+  ).lean();
+
+  if (!updatedUser) throw new AppError('User synchronization failed after update', StatusCodes.INTERNAL_SERVER_ERROR);
+
+  return { 
+    id: updatedUser._id, 
+    username: updatedUser.username, 
+    email: updatedUser.email, 
+    displayName: updatedUser.displayName, 
+    bio: updatedUser.bio, 
+    avatarUrl: updatedUser.avatarUrl, 
+    emotionVibe: updatedUser.emotionVibe 
+  };
 };
+
 
 const toggleFollow = async (currentUserId, targetUserId) => {
   if (targetUserId === currentUserId) throw new AppError('Cannot follow yourself', StatusCodes.BAD_REQUEST);

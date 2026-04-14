@@ -8,10 +8,11 @@ router.use(protect); // All user routes require auth
 
 router.get('/search', searchUsers);
 router.get('/connects', getConnects);
-router.get('/:id', getUserById);
-router.get('/:id/posts', getUserPosts);
-router.put('/update', upload.single('avatar'), updateUser);
 router.post('/follow/:id', toggleFollow);
 router.patch('/settings', updateSettings);
+router.put('/update', upload.single('avatar'), updateUser);
+router.get('/:id', getUserById);
+router.get('/:id/posts', getUserPosts);
+
 
 module.exports = router;

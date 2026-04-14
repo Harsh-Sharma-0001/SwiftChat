@@ -36,9 +36,7 @@ class SearchRequest(BaseModel):
 
 class SearchResponse(BaseModel):
     posts: List[Any]
-    query: str
     total: int
-    mode: str  # 'semantic' or 'keyword'
 
 
 def get_embedding(text: str) -> List[float]:
@@ -71,188 +69,156 @@ def health():
 async def semantic_search(req: SearchRequest):
     if client:
         try:
-            embedding = get_embedding(req.query)
-
-            # Use MongoDB Atlas Vector Search Aggregation Pipeline
             posts_collection = get_mongo_collection()
-
+            
             # Base match criteria
             match_criteria = {"isPublic": True, "isFlagged": False}
+            
+            # Exact emotion matching for mood/tone chips (Case-insensitive Regex)
+            # The query can be a single word mood like "Sarcastic"
+            match_criteria["emotion"] = {"$regex": f"^{req.query}$", "$options": "i"}
+
             if req.user_id:
                 try:
                     match_criteria["user"] = ObjectId(req.user_id)
                 except Exception:
-                    pass  # Invalid ID, ignore filter or handle as error
+                    pass
 
-            pipeline = [
-                {
-                    "$vectorSearch": {
-                        "index": "vector_index",
-                        "path": "embedding",
-                        "queryVector": embedding,
-                        "numCandidates": 150,
-                        "limit": 50,
+            rows = []
+            
+            # PHASE 1: Try direct match on emotion field (for chips)
+            rows = list(posts_collection.find(match_criteria).sort("createdAt", -1).limit(req.limit))
+            for r in rows:
+                r["id"] = str(r["_id"])
+                del r["_id"]
+                author = posts_collection.database.users.find_one({"_id": r["user"]})
+                if author:
+                    r["user"] = {
+                        "username": author.get("username"),
+                        "displayName": author.get("displayName"),
+                        "avatarUrl": author.get("avatarUrl")
                     }
-                },
-                {"$match": match_criteria},
-                {
-                    "$lookup": {
-                        "from": "users",
-                        "localField": "user",
-                        "foreignField": "_id",
-                        "as": "author",
-                    }
-                },
-                {"$unwind": "$author"},
-                {
-                    "$project": {
-                        "_id": 0,
-                        "id": {"$toString": "$_id"},
-                        "caption": 1,
-                        "mediaUrl": 1,
-                        "mediaType": 1,
-                        "emotion": 1,
-                        "moodScore": 1,
-                        "createdAt": 1,
-                        "likesCount": {"$size": {"$ifNull": ["$likes", []]}},
-                        "commentsCount": {"$size": {"$ifNull": ["$comments", []]}},
-                        "user": {
-                            "username": "$author.username",
-                            "displayName": "$author.displayName",
-                            "avatarUrl": "$author.avatarUrl",
-                        },
-                    }
-                },
-            ]
+                else:
+                    r["user"] = {"username": "unknown", "displayName": "Unknown User"}
+                r["likesCount"] = len(r.get("likes", []))
+                r["commentsCount"] = len(r.get("comments", []))
 
-            rows = list(posts_collection.aggregate(pipeline))
-
-            if rows:
-                # Add synthetic engagement summary
-                for r in rows:
-                    r["engagement_summary"] = (
-                        "Trending" if r.get("likesCount", 0) > 50 else "Active"
-                    )
-
-                # Reranking payload preparation
-                passages = []
-                for idx, r in enumerate(rows):
-                    caption = r.get("caption", "")
-                    emotion = r.get("emotion", "neutral")
-                    user = r.get("user", {}).get("username", "unknown")
-                    # Combine context for reranker to evaluate
-                    passage_text = (
-                        f"User: @{user} | Emotion: {emotion} | Context: {caption}"
-                    )
-                    passages.append({"text": passage_text})
-
-                rerank_payload = {
-                    "model": "nv-rerank-qa-mistral-4b:1",
-                    "query": req.query,
-                    "passages": passages,
-                }
-
-                async with httpx.AsyncClient() as http_client:
-                    res = await http_client.post(
-                        "https://ai.api.nvidia.com/v1/retrieval/nvidia/reranking",
-                        json=rerank_payload,
-                        headers={
-                            "Authorization": f"Bearer {os.getenv('NVIDIA_API_KEY')}",
-                            "Content-Type": "application/json",
-                        },
-                        timeout=15.0,
-                    )
-                    res.raise_for_status()
-                    rank_data = res.json()
-
-                rankings = rank_data.get("rankings", [])
-
-            if rows:
-                # ... (existing reranking logic) ...
-                rankings = rank_data.get("rankings", [])
-                reranked_rows = [rows[rank["index"]] for rank in rankings]
-                final_rows = reranked_rows[: req.limit]
-            else:
-                # SEARCH DISCOVERY: Imagine 3 trending posts if results are 0
-                final_rows = []
+            # PHASE 2: If no matches, try semantic search (if not a specific mood chip)
+            if not rows:
                 try:
-                    prompt = f"Imagine 3 highly engaging social media posts for the vibe: '{req.query}'. Return ONLY a JSON list of objects with 'caption' and 'mood' (VIBRANT, DEEP, or ETHEREAL)."
+                    embedding = get_embedding(req.query)
+                    pipeline = [
+                        {
+                            "$vectorSearch": {
+                                "index": "vector_index",
+                                "path": "embedding",
+                                "queryVector": embedding,
+                                "numCandidates": 150,
+                                "limit": 50,
+                            }
+                        },
+                        {"$match": {"isPublic": True, "isFlagged": False}},
+                        {
+                            "$lookup": {
+                                "from": "users",
+                                "localField": "user",
+                                "foreignField": "_id",
+                                "as": "author",
+                            }
+                        },
+                        {"$unwind": "$author"},
+                        {
+                            "$project": {
+                                "_id": 0,
+                                "id": {"$toString": "$_id"},
+                                "caption": 1,
+                                "mediaUrl": 1,
+                                "mediaType": 1,
+                                "emotion": 1,
+                                "createdAt": 1,
+                                "likesCount": {"$size": {"$ifNull": ["$likes", []]}},
+                                "commentsCount": {"$size": {"$ifNull": ["$comments", []]}},
+                                "user": {
+                                    "username": "$author.username",
+                                    "displayName": "$author.displayName",
+                                    "avatarUrl": "$author.avatarUrl",
+                                },
+                            }
+                        },
+                    ]
+                    rows = list(posts_collection.aggregate(pipeline))
+                except Exception as e:
+                    print(f"[SEARCH] Semantic search failed: {e}")
 
-                    response = client.chat.completions.create(
-                        model="google/gemma-3-27b-it",
-                        messages=[{"role": "user", "content": prompt}],
-                        temperature=0.8,
-                        max_tokens=500,
-                    )
+            if not rows:
+                # AI FALLBACK: Generate exactly 4 synthetic posts
+                print(f"[SEARCH] No real results for '{req.query}'. Triggering AI Fallback.")
+                final_rows = []
+                fallback_models = [
+                    "meta/llama-4-maverick-17b-128e-instruct",
+                    "deepseek-v3.2",
+                    "mistralai/mistral-small-3.1-24b-instruct-2503",
+                    "ibm/granite-3.3-8b-instruct",
+                ]
 
-                    content = response.choices[0].message.content.strip()
-                    # Basic JSON cleanup if model adds markdown
+                # Specific prompt as requested
+                prompt = f"Generate 4 short, engaging social media post captions for the mood: {req.query}. Return only a JSON array of 4 strings, nothing else."
+
+                content = None
+                for model in fallback_models:
+                    try:
+                        response = client.chat.completions.create(
+                            model=model,
+                            messages=[
+                                {"role": "system", "content": "You are a creative social media assistant. Return only a JSON array of strings."},
+                                {"role": "user", "content": prompt}
+                            ],
+                            temperature=0.8,
+                            max_tokens=500
+                        )
+                        content = response.choices[0].message.content.strip()
+                        if content: break
+                    except Exception as e:
+                        print(f"[SEARCH AI] Fallback {model} failed: {e}")
+                        continue
+
+                if content:
                     if "```json" in content:
                         content = content.split("```json")[1].split("```")[0].strip()
                     elif "```" in content:
                         content = content.split("```")[1].split("```")[0].strip()
 
-                    import json
+                    try:
+                        import json
+                        captions = json.loads(content)
+                        if isinstance(captions, list):
+                            for i, caption in enumerate(captions[:4]):
+                                final_rows.append({
+                                    "id": f"synthetic-{uuid.uuid4().hex[:8]}",
+                                    "caption": caption,
+                                    "image": f"https://picsum.photos/seed/{req.query.lower()}{i}/400/400",
+                                    "mediaUrl": f"https://picsum.photos/seed/{req.query.lower()}{i}/400/400", # Compatibility
+                                    "emotion": req.query,
+                                    "isSynthetic": True,
+                                    "author": { "displayName": "ARIA", "username": "aria_system" },
+                                    "user": { "displayName": "ARIA", "username": "aria_system" }, # Compatibility
+                                    "createdAt": "Just now",
+                                    "likesCount": 42,
+                                    "commentsCount": 0
+                                })
+                    except Exception as e:
+                        print(f"[SEARCH AI] JSON Parse Error: {e}")
 
-                    imagined = json.loads(content)
+                return SearchResponse(posts=final_rows, total=len(final_rows))
 
-                    for i, item in enumerate(imagined[:3]):
-                        mood = item.get("mood", "VIBRANT").upper()
-                    # Mood to Photo-ID Mapping for 100% Reliability
-                    MOOD_IMAGE_MAPPING = {
-                        "CINEMATIC": "photo-1485846234645-a62644efbdc1",
-                        "POETIC": "photo-1444703686981-a3abbc4d4fe3",
-                        "CYBERPUNK": "photo-1510511459019-5deecc729f6a",
-                        "MINIMALIST": "photo-1494438639946-1ebd1d20bf85",
-                        "ETHEREAL": "photo-1464822759023-fed622ff2c3b",
-                        "VIBRANT": "photo-1550684848-fac1c5b4e853",
-                        "DEEP": "photo-1502134249126-9f3755a50d78",
-                        "SARCASTIC": "photo-1531259683007-016a7b628fc3",
-                        "GEN-Z": "photo-1523240715632-b8aee269c41a",
-                        "DARK": "photo-1514539079130-25950c84af65",
-                        "CRYSTAL": "photo-1515516089376-88db1e26e9c0",
-                    }
+            return SearchResponse(posts=rows[:req.limit], total=len(rows))
+        except Exception as e:
+            print(f"[SEARCH] Critical error: {e}")
+            return SearchResponse(posts=[], total=0)
 
-                    for i, item in enumerate(imagined[:3]):
-                        mood = item.get("mood", "VIBRANT").upper()
-                        # Use mapped ID or a reliable random one if not found
-                        photo_id = MOOD_IMAGE_MAPPING.get(
-                            mood, "photo-1493612276216-ee3925520721"
-                        )
-                        mediaUrl = f"https://images.unsplash.com/{photo_id}?auto=format&fit=crop&w=600&q=80"
+    # Global fallback
+    return SearchResponse(posts=[], total=0)
 
-                        final_rows.append(
-                            {
-                                "id": f"synthetic-{str(uuid.uuid4())[:8]}",
-                                "caption": item.get("caption", ""),
-                                "mediaUrl": mediaUrl,
-                                "mediaType": "image",
-                                "emotion": mood,
-                                "user": {
-                                    "username": "aria_imagined",
-                                    "displayName": "ARIA Synthetic Feed",
-                                    "avatarUrl": "https://api.dicebear.com/7.x/bottts/svg?seed=aria",
-                                },
-                                "createdAt": "Just now",
-                                "likesCount": 99,
-                                "commentsCount": 5,
-                                "engagement_summary": "Trending Vibe",
-                            }
-                        )
-                except Exception:
-                    pass
-                    final_rows = []
-
-            return SearchResponse(
-                posts=final_rows,
-                query=req.query,
-                total=len(final_rows),
-                mode="semantic-reranked" if rows else "synthetic-discovery",
-            )
-        except Exception:
-            pass
-
-    # Fallback to empty — backend keyword fallback engaged
     return SearchResponse(posts=[], query=req.query, total=0, mode="unavailable")
 
 

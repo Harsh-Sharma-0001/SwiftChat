@@ -1,12 +1,13 @@
 # ai-services/chat-service/main.py
 import os
+import httpx
+import sys
 
 from fastapi import FastAPI, Depends
 from pydantic import BaseModel
 from typing import Optional, List, Dict
-from openai import OpenAI
+from openai import AsyncOpenAI
 from dotenv import load_dotenv
-import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from shared.auth import verify_api_key
@@ -15,13 +16,10 @@ load_dotenv()
 
 app = FastAPI(title="SwiftChat Chat Service", version="1.0.0")
 
-if os.getenv("NVIDIA_API_KEY"):
-    client = OpenAI(
-        base_url="https://integrate.api.nvidia.com/v1",
-        api_key=os.getenv("NVIDIA_API_KEY"),
-    )
-else:
-    client = None
+NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
+NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY")
+
+print(f"[ARIA BOOT] API Key loaded: {bool(NVIDIA_API_KEY)}")
 
 SYSTEM_PROMPT = """You are ARIA, SwiftChat's advanced AI companion. You are deeply empathetic, socially intuitive, and highly creative.
 Your purpose is to enhance the social experience on SwiftChat by understanding users' emotional states and matching them with relevant content.
@@ -70,125 +68,102 @@ def health():
 @app.post("/chat", response_model=ChatResponse, dependencies=[Depends(verify_api_key)])
 async def chat(req: ChatRequest):
     global _mock_idx
-    import httpx
+    print(f"[ARIA DEBUG] Context received: {req.context}")
 
     # Extract context details with robust fallbacks
     user_context = req.context or {}
-    user_name = user_context.get("display_name", "User")
-    user_handle = user_context.get("username", "")
-    user_email = user_context.get("email", "")
+    user_name = user_context.get("displayName") or user_context.get("display_name") or "User"
+    user_handle = user_context.get("username", "anonymous")
+    user_email = user_context.get("email", "hidden")
     identity = user_context.get("identity_grounding", {})
-    bio = identity.get("bio", "No bio provided.")
+    bio = user_context.get("bio") or identity.get("bio", "No bio provided.")
     recent_captions = identity.get("recent_captions", [])
 
-    # ARIA: The Real Assistant - Logic Integration
-    is_activity_query = any(
-        k in req.message.lower()
-        for k in ["my activity", "my posts", "latest posts", "what did i post"]
-    )
-
     # Enhanced System Prompt - FORCED PERSONALIZATION PROTOCOL
-    caption_reference = f"'{recent_captions[0]}'" if recent_captions else None
-
     contextual_system_prompt = SYSTEM_PROMPT + (
         f"\n\n[NEURAL IDENTITY GROUNDING]\n"
         f"- Active Identity: {user_name} (@{user_handle})\n"
         f"- Email: {user_email}\n"
-        f"- Bio: {bio}\n"
-        f"- Recent Captions: {', '.join(recent_captions) if recent_captions else 'None'}\n\n"
+        f"- Bio: {bio}\n\n"
         f"STRICT GREETING PROTOCOL:\n"
         f"1. You are FORBIDDEN from using generic greetings like 'How can I help you today?' or 'Hello!'.\n"
-        f"2. If 'Recent Captions' exist, you MUST start the entire conversation with exactly this pattern: "
-        f"'Hello {user_name}, I've been analyzing your recent activity, especially your thought on {caption_reference}...' "
-        f"then transition naturally into your response.\n"
-        f"3. If no captions exist, lead with a 'Hello {user_name}' and a deep reference to their Bio content ({bio})."
+        f"2. MANDATORY: You MUST greet the user by name ({user_name}) and mention their bio ({bio}) in your opening sentence. "
+        f"For example: 'Hello {user_name}, I see you are a {bio}...'\n"
     )
 
-    if client:
-        # 1) Fetch Context from Search Service
-        context_text = ""
-        try:
-            search_url = os.getenv(
-                "SEARCH_SERVICE_URL", "http://swiftchat_search_service:8003/search"
+    # 1) Fetch Context from Search Service
+    context_text = ""
+    is_activity_query = any(k in req.message.lower() for k in ["my activity", "my posts", "latest posts", "what did i post"])
+    
+    try:
+        search_url = os.getenv("SEARCH_SERVICE_URL", "http://swiftchat_search_service:8003/search")
+        api_key_val = os.getenv("API_KEY", "swiftchat-secret-key")
+        headers = {"X-API-Key": api_key_val}
+        search_query = f"@{user_handle}" if is_activity_query and user_handle else req.message
+
+        async with httpx.AsyncClient() as http_client:
+            search_res = await http_client.post(
+                search_url,
+                json={"query": search_query, "limit": 5, "user_id": req.userId},
+                headers=headers,
+                timeout=5.0,
             )
-            api_key_val = os.getenv("API_KEY", "swiftchat-secret-key")
-            headers = {"X-API-Key": api_key_val}
 
-            # If it's an activity query, we search specifically for user's handle
-            search_query = (
-                f"@{user_handle}" if is_activity_query and user_handle else req.message
-            )
+            if search_res.status_code == 200:
+                data = search_res.json()
+                posts = data.get("posts", [])
+                if posts:
+                    context_lines = [
+                        f"- Post (Emotion: {p.get('emotion', 'neutral')} | {p.get('engagement_summary', 'Active')} | {p.get('createdAt', 'Recently')}): {p.get('caption', '')}"
+                        for p in posts
+                    ]
+                    header = "USER ACTIVITY (Latest 5 posts):" if is_activity_query else "PLATFORM CONTEXT:"
+                    context_text = f"{header}\n" + "\n".join(context_lines)
+    except Exception as e:
+        print(f"[ARIA] Context fetch failed: {e}")
 
-            async with httpx.AsyncClient() as http_client:
-                search_res = await http_client.post(
-                    search_url,
-                    json={"query": search_query, "limit": 5, "user_id": req.userId},
-                    headers=headers,
-                    timeout=5.0,
-                )
+    # Build history
+    messages = [{"role": "system", "content": contextual_system_prompt}]
+    if context_text:
+        messages.append({"role": "system", "content": context_text})
 
-                if search_res.status_code == 200:
-                    data = search_res.json()
-                    posts = data.get("posts", [])
-                    if posts:
-                        context_lines = []
-                        for p in posts:
-                            caption = p.get("caption", "")
-                            emotion = p.get("emotion", "neutral")
-                            date = p.get("createdAt", "Recently")
-                            engagement = p.get("engagement_summary", "Active")
-                            context_lines.append(
-                                f"- Post (Emotion: {emotion} | {engagement} | {date}): {caption}"
-                            )
+    for msg in (req.history or [])[-8:]:
+        role = "assistant" if msg.role in ["assistant", "model"] else "user"
+        messages.append({"role": role, "content": msg.content})
 
-                        header = (
-                            "USER ACTIVITY (Latest 5 posts):"
-                            if is_activity_query
-                            else "PLATFORM CONTEXT:"
-                        )
-                        context_text = f"{header}\n" + "\n".join(context_lines)
-        except Exception:
-            pass
+    messages.append({"role": "user", "content": req.message})
 
-        # Build history
-        messages = [{"role": "system", "content": contextual_system_prompt}]
-        if context_text:
-            messages.append({"role": "system", "content": context_text})
+    # 4-Model Fallback Hierarchy
+    fallback_models = [
+        "meta/llama-4-maverick-17b-128e-instruct",
+        "deepseek-v3.2",
+        "mistralai/mistral-small-3.1-24b-instruct-2503",
+        "ibm/granite-3.3-8b-instruct",
+    ]
 
-        for msg in (req.history or [])[-8:]:
-            role = "assistant" if msg.role in ["assistant", "model"] else "user"
-            messages.append({"role": role, "content": msg.content})
-
-        messages.append({"role": "user", "content": req.message})
-
-        # 4-Model Fallback Hierarchy
-        fallback_models = [
-            "meta/llama-4-maverick-17b-128e-instruct",
-            "deepseek-v3.2",
-            "mistralai/mistral-small-3.1-24b-instruct-2503",
-            "ibm/granite-3.3-8b-instruct",
-        ]
-
+    if NVIDIA_API_KEY:
         for model in fallback_models:
+            print(f"[ARIA] Attempting fallback model: {model}")
             try:
-                # We use a 15s timeout for each attempt as requested
-                # Note: OpenAI client doesn't support timeout per call in sync mode easily without wrapping
-                # But we can try to use the client's internal timeout or just rely on the API speed
-                response = client.chat.completions.create(
-                    model=model,
-                    messages=messages,
-                    temperature=0.85,
-                    max_tokens=400,
-                    timeout=15.0,
-                )
-                return ChatResponse(
-                    response=response.choices[0].message.content.strip()
-                )
-            except Exception:
-                pass
+                # Use a fresh client with explicit timeout for each attempt as requested
+                async with httpx.AsyncClient(timeout=15.0) as http_client:
+                    client = AsyncOpenAI(api_key=NVIDIA_API_KEY, base_url=NVIDIA_BASE_URL, http_client=http_client)
+                    response = await client.chat.completions.create(
+                        model=model,
+                        messages=messages,
+                        temperature=0.85,
+                        max_tokens=400
+                    )
+                    print(f"[ARIA] Using model success: {model}")
+                    return ChatResponse(response=response.choices[0].message.content.strip())
+            except Exception as e:
+                print(f"[ARIA] Model {model} failed: {e}")
                 continue
 
-    # Mock fallback if all models fail or client is not configured
+        # If we reach here, all fallbacks failed
+        return ChatResponse(response="ARIA is currently unavailable. Please try again shortly.")
+
+    # Mock fallback if key is missing
     response = MOCK_RESPONSES[_mock_idx % len(MOCK_RESPONSES)]
     _mock_idx += 1
     return ChatResponse(response=response, intent="greeting")
@@ -196,7 +171,5 @@ async def chat(req: ChatRequest):
 
 if __name__ == "__main__":
     import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=int(os.getenv("PORT_CHAT", 8004)), reload=True)
 
-    uvicorn.run(
-        "main:app", host="0.0.0.0", port=int(os.getenv("PORT_CHAT", 8004)), reload=True
-    )

@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://api.dicebear.com/7.x/bottts/svg?seed=aria&backgroundColor=b6e3f4" width="120" height="120" alt="SwiftChat Logo" />
+  <img src="https://github.com/user-attachments/assets/d30ba98d-52fc-4e28-ba67-4cb5e8a0efc9" width="180" alt="SwiftChat Logo" />
   
   # SwiftChat | The Sentient Prism 🌌
   
@@ -8,7 +8,7 @@
   [![AI Architecture](https://img.shields.io/badge/AI-Neural--Mesh-vibrant.svg)](https://integrate.api.nvidia.com/)
   [![Stack](https://img.shields.io/badge/Stack-MERN%20%2B%20FastAPI-blue)](https://www.mongodb.com/mern-stack)
 
-  **A next-generation AI-orchestrated social ecosystem using a distributed Neural-Mesh architecture.**
+**A next-generation AI-orchestrated social ecosystem using a distributed Neural-Mesh architecture.**
 
 </div>
 
@@ -19,16 +19,20 @@
 SwiftChat is not just a social network; it is a **Sentient Prism**—a platform where human interaction is enhanced by a distributed grid of specialized AI microservices.
 
 ### 🧠 4-Tier Intelligence Fallback
+
 Our core assistant, **ARIA**, operates on a high-availability fallback loop to ensure 100% cognitive uptime:
+
 1.  **Llama-4 (Maverick 17B)**: Primary logical engine for high-fidelity reasoning.
 2.  **DeepSeek V3**: Secondary analytical node for code and complex semantics.
 3.  **Mistral Small 3.1**: Efficient tertiary node for rapid response generation.
 4.  **IBM Granite 3.3**: Defensive fallback for baseline stability and alignment.
 
 ### 👁️ Multimodal Vision Pipeline
+
 Powered by **Gemma-3**, SwiftChat performs deep-frame analysis on all shared media, grounding AI captions and cognitive insights in real-world visual data.
 
 ### 🕵️ Semantic Vector Search
+
 Utilizing **NVIDIA Nemoretriever** embeddings and **Atlas Vector Search**, the platform enables users to search for "vibes" and "emotions" rather than just keywords, finding resonance across the entire neural network.
 
 ---
@@ -42,14 +46,30 @@ Utilizing **NVIDIA Nemoretriever** embeddings and **Atlas Vector Search**, the p
 
 ---
 
+## 📸 Cognitive Visualization
+
+Here is a look at the active Sentient Prism, visualizing live telemetry and neural insights.
+
+### Identity-Grounded Chat (ARIA)
+
+<img src="./frontend/public/images/readme/chat_screenshot.png" width="100%" alt="ARIA Chat Interface" />
+
+### Live Flow State (Cognition %)
+
+<img src="./frontend/public/images/readme/telemetry_screenshot.png" width="100%" alt="Cognition Telemetry Visualization" />
+
+---
+
 ## 🛠️ Technology Manifest
 
 ### Core Stack
+
 - **Frontend**: React 18, Tailwind CSS, Framer Motion, Redux Toolkit.
 - **Backend**: Node.js, Express, MongoDB, Redis.
 - **AI Services**: Python 3.10+, FastAPI, PyMongo, NVIDIA NIM API.
 
 ### Orchestration
+
 - **Docker**: Full containerization of the MERN stack and 5+ Python microservices.
 - **Nginx**: High-performance reverse proxy handling routing and media persistence.
 - **Winston**: Professional-grade logging and telemetry.
@@ -61,7 +81,9 @@ Utilizing **NVIDIA Nemoretriever** embeddings and **Atlas Vector Search**, the p
 To manifest the environment locally, ensure you have **Docker Desktop** and **Node.js** installed.
 
 ### 1. Synchronize Environment
+
 Create a `.env` file in the root directory (and individual service directories as per `.env.example`):
+
 ```bash
 # Core Metrics
 NVIDIA_API_KEY=your_key_here
@@ -71,12 +93,15 @@ JWT_SECRET=your_secret_vibe
 ```
 
 ### 2. Broadcast the Signal
+
 Use Docker Compose to spin up the entire neural network:
+
 ```bash
 docker-compose up --build -d
 ```
 
 ### 3. Access the Network
+
 - **Frontend**: [http://localhost](http://localhost)
 - **API Docs**: [http://localhost/api-docs/](http://localhost/api-docs/)
 - **AI Services Status**: [http://localhost:8004/health](http://localhost:8004/health)
