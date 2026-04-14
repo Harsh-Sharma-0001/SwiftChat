@@ -1,4 +1,4 @@
-<img width="959" height="536" alt="18" src="https://github.com/user-attachments/assets/5bb5ad8c-0792-41d4-b83c-23ec443145d8" /><div align="center">
+<div align="center">
   <img src="https://github.com/user-attachments/assets/d30ba98d-52fc-4e28-ba67-4cb5e8a0efc9" width="180" alt="SwiftChat Logo" />
   
   # SwiftChat | The Sentient Prism 🌌
