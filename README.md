@@ -101,8 +101,16 @@ JWT_SECRET=your_secret_vibe
 Use Docker Compose to spin up the entire neural network:
 
 ```bash
-docker-compose up --build -d
+docker-compose up --build
 ```
+
+
+Use Docker Compose to tear down and remove the entire neural network stack:
+
+```bash
+docker-compose down
+```
+
 
 ### 3. Access the Network
 
