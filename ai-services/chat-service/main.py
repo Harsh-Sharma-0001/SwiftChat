@@ -82,7 +82,7 @@ def execute_data_query(user_id: str, message: str) -> str:
     
     try:
         user_obj_id = ObjectId(user_id)
-    except:
+    except Exception:
         return ""
 
     try:
