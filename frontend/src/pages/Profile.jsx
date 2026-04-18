@@ -24,7 +24,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import api from "../services/api";
 import PostCard from "../components/feed/PostCard";
 import RightPanel from "../components/layout/RightPanel";
-import { fetchProfile } from "../store/slices/authSlice";
+import { fetchProfile, logout } from "../store/slices/authSlice";
 
 const COLORS = ["#ec4899", "#7c3aed", "#06b6d4", "#eab308", "#8b5cf6"];
 
@@ -243,16 +243,30 @@ function SettingsDrawer({ profile, onClose, onUpdate }) {
   };
 
   const handleSettingsUpdate = async (updates) => {
-    // Optimistic UI updates
     const prev = { notifsEnabled, privateMode, aiInsights };
 
-    if (updates.notifications !== undefined)
+    if (updates.notifications !== undefined) {
+      if (updates.notifications && "Notification" in window) {
+        if (Notification.permission !== "granted") {
+          const permission = await Notification.requestPermission();
+          if (permission !== "granted") {
+            // Revert on denial and we need to dispatch a toast (pass through onUpdate or handle here)
+            // But SettingsDrawer doesn't have toast, so we rely on parent update via onUpdate
+            onUpdate({ _error: 'Notification permission denied by browser.' });
+            return;
+          }
+        }
+      }
       setNotifsEnabled(updates.notifications);
+    }
     if (updates.isPrivate !== undefined) {
       setPrivateMode(updates.isPrivate);
       onUpdate(updates);
     }
-    if (updates.aiInsights !== undefined) setAiInsights(updates.aiInsights);
+    if (updates.aiInsights !== undefined) {
+      setAiInsights(updates.aiInsights);
+      onUpdate(updates);
+    }
 
     try {
       await api.patch("/users/settings", updates);
@@ -414,7 +428,18 @@ function SettingsDrawer({ profile, onClose, onUpdate }) {
                   >
                     Cancel
                   </button>
-                  <button className="flex-1 py-2 text-xs rounded-lg bg-red-500/20 text-red-400 border border-red-500/30">
+                  <button
+                    onClick={async () => {
+                      try {
+                         await api.delete('/users/me');
+                         dispatch(logout());
+                         // navigation to /register is handled automatically by Auth route protection, or we can use window.location
+                         window.location.href = '/register';
+                      } catch (err) {
+                         onUpdate({ _error: 'Failed to terminate account.' });
+                      }
+                    }}
+                    className="flex-1 py-2 text-xs rounded-lg bg-red-500/20 text-red-400 border border-red-500/30">
                     Terminate
                   </button>
                 </div>
@@ -482,12 +507,20 @@ export default function Profile() {
   };
 
   const handleProfileUpdate = (updates) => {
+    if (updates._error) {
+      return setToast({ message: updates._error, type: "error" });
+    }
     setProfile((prev) => ({ ...prev, ...updates }));
+    dispatch(fetchProfile());
     if (updates.isPrivate !== undefined) {
       setToast({
         message: `Private Mode ${updates.isPrivate ? "Enabled" : "Disabled"}`,
         type: "success",
       });
+    }
+    if (updates.aiInsights !== undefined) {
+      // Re-fetch profile to sync redux state immediately for Sidebar
+      dispatch(fetchProfile());
     }
   };
 

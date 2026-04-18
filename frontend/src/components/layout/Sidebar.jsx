@@ -80,12 +80,14 @@ export default function Sidebar() {
           );
         })}
 
-        <div className="mt-8">
-          <NavLink to="/ai-insights" className="w-full mt-2 gradient-btn py-3 px-4 flex items-center justify-center gap-2">
-            <Zap size={18} />
-            AI Insights
-          </NavLink>
-        </div>
+        {user?.settings?.aiInsights !== false && (
+          <div className="mt-8">
+            <NavLink to="/ai-insights" className="w-full mt-2 gradient-btn py-3 px-4 flex items-center justify-center gap-2">
+              <Zap size={18} />
+              AI Insights
+            </NavLink>
+          </div>
+        )}
       </nav>
 
       <div className="px-4 mt-auto">

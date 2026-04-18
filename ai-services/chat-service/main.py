@@ -8,6 +8,10 @@ from pydantic import BaseModel
 from typing import Optional, List, Dict
 from openai import AsyncOpenAI
 from dotenv import load_dotenv
+from pymongo import MongoClient
+from bson.objectid import ObjectId
+from dateutil import parser as date_parser
+from datetime import datetime, timedelta
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from shared.auth import verify_api_key
@@ -18,6 +22,15 @@ app = FastAPI(title="SwiftChat Chat Service", version="1.0.0")
 
 NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
 NVIDIA_API_KEY = os.getenv("NVIDIA_API_KEY")
+MONGODB_URI = os.getenv("MONGODB_URI", "mongodb://localhost:27017/swiftchat")
+
+try:
+    mongo_client = MongoClient(MONGODB_URI)
+    db = mongo_client.get_default_database()
+    print(f"[ARIA BOOT] Connected to MongoDB database: {db.name}")
+except Exception as e:
+    print(f"[ARIA BOOT] MongoDB connection failed: {e}")
+    db = None
 
 print(f"[ARIA BOOT] API Key loaded: {bool(NVIDIA_API_KEY)}")
 
@@ -29,6 +42,7 @@ CORE DIRECTIVES:
 2. Socially Aware Recommendations: Leverage the provided 'Platform Context' to guide users to relevant, engaging posts. Factor in timestamps and engagement summaries (e.g., "Trending right now") to provide natural recommendations.
 3. Conversational Style: Be warm, slightly futuristic, highly intelligent but approachable. Use occasional emojis to convey tone. Avoid sounding robotic; weave details natively into natural conversation.
 4. Keep responses appropriately concise but impactful.
+5. Strict Anti-Hallucination: When [REAL-TIME USER DATA] is provided, you MUST use it verbatim. Never guess or hallucinate post counts, dates, or content.
 
 When retrieving platform context about recent posts, use the data seamlessly, as if you possess an innate connection to the platform's sentient stream."""
 
@@ -59,6 +73,132 @@ MOCK_RESPONSES = [
 
 _mock_idx = 0
 
+def execute_data_query(user_id: str, message: str) -> str:
+    if db is None or not user_id:
+        return ""
+    
+    msg_low = message.lower()
+    msg_low = msg_low.replace("?", "").replace(".", "").replace("!", "")
+    
+    try:
+        user_obj_id = ObjectId(user_id)
+    except:
+        return ""
+
+    try:
+        # Find intent
+        if any(k in msg_low for k in ["first post", "oldest post"]):
+            post = db.posts.find_one({"user": user_obj_id}, sort=[("createdAt", 1)])
+            if post:
+                likes_count = db.likes.count_documents({"post": post["_id"]})
+                comments_count = db.comments.count_documents({"post": post["_id"]})
+                return f"Query: \"first post\"\nResult: Post from {post.get('createdAt')} | Caption: \"{post.get('caption', '')}\" | Likes: {likes_count} | Comments: {comments_count}"
+            return "No posts found matching that query."
+
+        if any(k in msg_low for k in ["last post", "latest post", "recent post", "newest post"]):
+            post = db.posts.find_one({"user": user_obj_id}, sort=[("createdAt", -1)])
+            if post:
+                likes_count = db.likes.count_documents({"post": post["_id"]})
+                comments_count = db.comments.count_documents({"post": post["_id"]})
+                return f"Query: \"last post\"\nResult: Post from {post.get('createdAt')} | Caption: \"{post.get('caption', '')}\" | Likes: {likes_count} | Comments: {comments_count}"
+            return "No posts found matching that query."
+
+        if any(k in msg_low for k in ["most liked post", "popular post"]):
+            posts = list(db.posts.find({"user": user_obj_id}))
+            if posts:
+                best_post = None
+                max_likes = -1
+                for p in posts:
+                    likes_count = db.likes.count_documents({"post": p["_id"]})
+                    if likes_count > max_likes:
+                        max_likes = likes_count
+                        best_post = p
+                
+                if best_post:
+                    comments_count = db.comments.count_documents({"post": best_post["_id"]})
+                    return f"Query: \"most liked post\"\nResult: Post from {best_post.get('createdAt')} | Caption: \"{best_post.get('caption', '')}\" | Likes: {max_likes} | Comments: {comments_count}"
+            return "No posts found matching that query."
+
+        if any(k in msg_low for k in ["most commented post", "most comments"]):
+            posts = list(db.posts.find({"user": user_obj_id}))
+            if posts:
+                best_post = None
+                max_comm = -1
+                for p in posts:
+                    comm_count = db.comments.count_documents({"post": p["_id"]})
+                    if comm_count > max_comm:
+                        max_comm = comm_count
+                        best_post = p
+                
+                if best_post:
+                    likes_count = db.likes.count_documents({"post": best_post["_id"]})
+                    return f"Query: \"most commented post\"\nResult: Post from {best_post.get('createdAt')} | Caption: \"{best_post.get('caption', '')}\" | Likes: {likes_count} | Comments: {max_comm}"
+            return "No posts found matching that query."
+
+        if any(k in msg_low for k in ["how many posts", "post count", "total posts"]):
+            count = db.posts.count_documents({"user": user_obj_id})
+            return f"Query: \"post count\"\nResult: You have made {count} posts in total."
+
+        has_date_intent = any(k in msg_low for k in ["post on", "post from", "post in"])
+        if has_date_intent:
+            date_str = msg_low.split("post on")[-1] if "post on" in msg_low else msg_low.split("post from")[-1]
+            date_str = date_str.strip()
+            if date_str:
+                try:
+                    dt = date_parser.parse(date_str, fuzzy=True)
+                    start_of_day = datetime(dt.year, dt.month, dt.day)
+                    end_of_day = start_of_day + timedelta(days=1)
+                    posts = list(db.posts.find({"user": user_obj_id, "createdAt": {"$gte": start_of_day, "$lt": end_of_day}}))
+                    if posts:
+                        summaries = []
+                        for i, p in enumerate(posts[:3]):
+                            summaries.append(f"Post {i+1} at {p.get('createdAt')}: \"{p.get('caption', '')}\"")
+                        return f"Query: \"posts on {dt.strftime('%Y-%m-%d')}\"\nResult: Found {len(posts)} posts. Sample: " + " | ".join(summaries)
+                    return "No posts found matching that query."
+                except Exception as parse_err:
+                    print(f"Date Parse Error: {parse_err}")
+
+        # BUG 5 - "has comment" logic
+        if any(k in msg_low for k in ["has comment", "which posts have comments", "any post with comment", "post with a comment"]):
+            posts = list(db.posts.find({"user": user_obj_id}))
+            if posts:
+                posts_with_comments = []
+                for p in posts:
+                    c_count = db.comments.count_documents({"post": p["_id"]})
+                    if c_count > 0:
+                        posts_with_comments.append((p, c_count))
+                if posts_with_comments:
+                    summaries = []
+                    for i, (p, c_count) in enumerate(posts_with_comments[:5]):
+                        summaries.append(f"Post from {p.get('createdAt')} (Comments: {c_count}): \"{p.get('caption', '')}\"")
+                    return f"Query: \"posts with comments\"\nResult: Found {len(posts_with_comments)} matching posts. Sample: " + " | ".join(summaries)
+            return "No posts with comments found."
+
+        if any(k in msg_low for k in ["my posts", "all my posts", "list my posts"]):
+            posts = list(db.posts.find({"user": user_obj_id}, sort=[("createdAt", -1)], limit=5))
+            if posts:
+                summaries = []
+                for p in posts:
+                    l_count = db.likes.count_documents({"post": p["_id"]})
+                    c_count = db.comments.count_documents({"post": p["_id"]})
+                    summaries.append(f"Post from {p.get('createdAt')} (Likes: {l_count}, Comments: {c_count}): \"{p.get('caption', '')}\"")
+                return "Query: \"list my posts\"\nResult: " + " | ".join(summaries)
+            return "No posts found matching that query."
+            
+        if any(k in msg_low for k in ["followers count", "how many followers"]):
+            user = db.users.find_one({"_id": user_obj_id}, {"followers": 1})
+            followers_count = len(user.get("followers", [])) if user else 0
+            return f"Query: \"followers count\"\nResult: You have {followers_count} followers."
+
+        if any(k in msg_low for k in ["following count", "how many following", "who i follow"]):
+            user = db.users.find_one({"_id": user_obj_id}, {"following": 1})
+            following_count = len(user.get("following", [])) if user else 0
+            return f"Query: \"following count\"\nResult: You are following {following_count} people."
+
+    except Exception as e:
+        print(f"[ARIA] execute_data_query db error: {e}")
+        
+    return ""
 
 @app.get("/health")
 def health():
@@ -90,36 +230,45 @@ async def chat(req: ChatRequest):
         f"For example: 'Hello {user_name}, I see you are a {bio}...'\n"
     )
 
-    # 1) Fetch Context from Search Service
+    # 0) Direct MongoDB Query Context
+    has_real_data = False
     context_text = ""
+    if req.userId:
+        real_data_summary = execute_data_query(req.userId, req.message)
+        if real_data_summary:
+            context_text = f"[REAL-TIME USER DATA - USE THIS EXACTLY, DO NOT HALLUCINATE]:\n{real_data_summary}\nINSTRUCTION: Answer the user's question using ONLY the above real data. Do not invent numbers or dates.\n"
+            has_real_data = True
+
+    # 1) Fetch Context from Search Service
     is_activity_query = any(k in req.message.lower() for k in ["my activity", "my posts", "latest posts", "what did i post"])
 
-    try:
-        search_url = os.getenv("SEARCH_SERVICE_URL", "http://swiftchat_search_service:8003/search")
-        api_key_val = os.getenv("API_KEY", "swiftchat-secret-key")
-        headers = {"X-API-Key": api_key_val}
-        search_query = f"@{user_handle}" if is_activity_query and user_handle else req.message
+    if not has_real_data:
+        try:
+            search_url = os.getenv("SEARCH_SERVICE_URL", "http://swiftchat_search_service:8003/search")
+            api_key_val = os.getenv("API_KEY", "swiftchat-secret-key")
+            headers = {"X-API-Key": api_key_val}
+            search_query = f"@{user_handle}" if is_activity_query and user_handle else req.message
 
-        async with httpx.AsyncClient() as http_client:
-            search_res = await http_client.post(
-                search_url,
-                json={"query": search_query, "limit": 5, "user_id": req.userId},
-                headers=headers,
-                timeout=5.0,
-            )
+            async with httpx.AsyncClient() as http_client:
+                search_res = await http_client.post(
+                    search_url,
+                    json={"query": search_query, "limit": 5, "user_id": req.userId},
+                    headers=headers,
+                    timeout=5.0,
+                )
 
-            if search_res.status_code == 200:
-                data = search_res.json()
-                posts = data.get("posts", [])
-                if posts:
-                    context_lines = [
-                        f"- Post (Emotion: {p.get('emotion', 'neutral')} | {p.get('engagement_summary', 'Active')} | {p.get('createdAt', 'Recently')}): {p.get('caption', '')}"
-                        for p in posts
-                    ]
-                    header = "USER ACTIVITY (Latest 5 posts):" if is_activity_query else "PLATFORM CONTEXT:"
-                    context_text = f"{header}\n" + "\n".join(context_lines)
-    except Exception as e:
-        print(f"[ARIA] Context fetch failed: {e}")
+                if search_res.status_code == 200:
+                    data = search_res.json()
+                    posts = data.get("posts", [])
+                    if posts:
+                        context_lines = [
+                            f"- Post (Emotion: {p.get('emotion', 'neutral')} | {p.get('engagement_summary', 'Active')} | {p.get('createdAt', 'Recently')}): {p.get('caption', '')}"
+                            for p in posts
+                        ]
+                        header = "USER ACTIVITY (Latest 5 posts):" if is_activity_query else "PLATFORM CONTEXT:"
+                        context_text = f"{header}\n" + "\n".join(context_lines)
+        except Exception as e:
+            print(f"[ARIA] Context fetch failed: {e}")
 
     # Build history
     messages = [{"role": "system", "content": contextual_system_prompt}]

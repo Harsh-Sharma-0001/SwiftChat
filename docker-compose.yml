@@ -90,6 +90,7 @@ services:
       - NVIDIA_API_KEY=${NVIDIA_API_KEY:-}
       - API_KEY=${AI_SERVICE_KEY:-swiftchat-secret-key}
       - SEARCH_SERVICE_URL=http://swiftchat_search_service:8003/search
+      - MONGODB_URI=${MONGODB_URI:-mongodb://localhost:27017/swiftchat}
       - PORT_CHAT=8004
     ports:
       - "8004:8004"

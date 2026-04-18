@@ -49,12 +49,26 @@ const getFeed = async (userId, page = 1, limit = 10) => {
   const follows = await Follow.find({ follower: userId }).select('following');
   const followedIds = follows.map(f => f.following);
   
+  const User = require('../models/User.model');
+  const privateUsers = await User.find({ isPrivate: true }).select('_id');
+  const excludedUserIds = privateUsers
+    .map(u => u._id)
+    .filter(pid => 
+      pid.toString() !== userId.toString() && 
+      !followedIds.some(fid => fid.toString() === pid.toString())
+    );
+
   // Unified Aggregation: (Own + Following + Global Sentient Stream)
   const query = {
-    $or: [
-      { user: userId },
-      { user: { $in: followedIds } },
-      { isPublic: true, isFlagged: false }
+    $and: [
+      { user: { $nin: excludedUserIds } },
+      {
+        $or: [
+          { user: userId },
+          { user: { $in: followedIds } },
+          { isPublic: true, isFlagged: false }
+        ]
+      }
     ]
   };
 

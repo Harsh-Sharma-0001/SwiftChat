@@ -9,11 +9,10 @@ const logger = require("./logger");
  */
 const createTransporter = () => {
   return nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT, 10) || 587,
+    service: process.env.EMAIL_SERVICE || "gmail",
     auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
     },
   });
 };
@@ -29,7 +28,8 @@ const sendEmail = async ({ to, subject, html }) => {
   const transporter = createTransporter();
 
   const mailOptions = {
-    from: `"SwiftChat Neural OS" <${process.env.SMTP_USER}>`,
+    from: `"SwiftChat" <${process.env.EMAIL_USER}>`,
+    replyTo: process.env.EMAIL_USER,
     to,
     subject,
     html,
@@ -52,7 +52,7 @@ const buildResetPasswordEmail = (resetUrl) => {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Re-sync Your Neural Link</title>
+  <title>Reset Your Password</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500&display=swap');
 
@@ -257,20 +257,20 @@ const buildResetPasswordEmail = (resetUrl) => {
       <!-- Header -->
       <div class="header">
         <div class="logo-icon">✦</div>
-        <h1>SwiftChat Neural OS</h1>
-        <p>Neural Link Re-Sync Protocol</p>
+        <h1>SwiftChat</h1>
+        <p>Reset Your Password</p>
       </div>
 
       <!-- Body -->
       <div class="body">
         <p class="greeting">
-          A request has been detected on the network to re-sync your <strong style="color: #c4b5fd;">Neural Link</strong>.
+          A request has been detected on the network to reset your <strong style="color: #c4b5fd;">Password</strong>.
           If you initiated this, proceed below to restore full access to your node.
         </p>
 
         <div class="signal-box">
           <p>
-            ✦ &nbsp;<strong>Signal Intercepted:</strong> A request has been made to re-sync your Neural Link.
+            ✦ &nbsp;<strong>Signal Intercepted:</strong> A request has been made to Reset Your Password.
             This token will expire in <strong>10 minutes</strong>. If you did not initiate this, you may safely ignore this transmission.
           </p>
         </div>
@@ -283,7 +283,7 @@ const buildResetPasswordEmail = (resetUrl) => {
 
         <div class="cta-container">
           <a href="${resetUrl}" class="cta-btn">
-            ⚡ Re-sync Neural Link
+            ⚡ Reset Your Password
           </a>
           <p class="expiry-note">
             ⏱ This link expires in <strong style="color: #a855f7;">10 minutes</strong>
@@ -301,7 +301,7 @@ const buildResetPasswordEmail = (resetUrl) => {
       <!-- Footer -->
       <div class="footer">
         <p>
-          This message was sent by <span class="brand">SwiftChat Neural OS</span>.<br />
+          This message was sent by <span class="brand">SwiftChat </span>.<br />
           If you did not request a password reset, no action is required — your account remains secure.<br />
           © ${new Date().getFullYear()} SwiftChat. All rights reserved.
         </p>
@@ -314,4 +314,4 @@ const buildResetPasswordEmail = (resetUrl) => {
   `.trim();
 };
 
-module.exports = { sendEmail, buildResetPasswordEmail };
+module.exports = { createTransporter, sendEmail, buildResetPasswordEmail };

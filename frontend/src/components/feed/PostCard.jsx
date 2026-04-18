@@ -4,6 +4,7 @@ import { Heart, MessageSquare, Share2, Sparkles, MoreHorizontal, Send, Flag, Tra
 import { toggleLike } from '../../store/slices/feedSlice';
 import { formatDistanceToNow } from '../../utils/formatters';
 import api from '../../services/api';
+import ImageLightbox from './ImageLightbox';
 
 // ── Mini Toast ──────────────────────────────────────────────────────────────
 function Toast({ message, type = 'success', onDone }) {
@@ -114,6 +115,7 @@ export default function PostCard({ post, onDelete }) {
   const [showReportModal, setShowReportModal] = useState(false);
   const [toast, setToast] = useState(null);
   const [deletingPost, setDeletingPost] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
 
   const menuRef = useRef(null);
   const commentInputRef = useRef(null);
@@ -291,7 +293,12 @@ export default function PostCard({ post, onDelete }) {
                 {post.mediaType === 'video' ? (
                   <video src={post.mediaUrl} controls className="w-full object-contain max-h-[500px]" />
                 ) : (
-                  <img src={post.mediaUrl} alt="Post media" className="w-full object-cover max-h-[500px] hover:scale-105 transition-transform duration-500" />
+                  <img 
+                    src={post.mediaUrl} 
+                    alt="Post media" 
+                    onClick={() => setLightboxOpen(true)}
+                    className="w-full object-cover max-h-[500px] hover:scale-105 transition-transform duration-500 cursor-pointer" 
+                  />
                 )}
               </div>
             )}
@@ -397,6 +404,9 @@ export default function PostCard({ post, onDelete }) {
           )}
         </div>
       </div>
+      {lightboxOpen && post.mediaType !== 'video' && (
+        <ImageLightbox imageUrl={post.mediaUrl} onClose={() => setLightboxOpen(false)} />
+      )}
     </>
   );
 }

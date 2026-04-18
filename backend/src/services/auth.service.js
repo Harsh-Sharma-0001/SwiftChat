@@ -150,10 +150,10 @@ const logoutUser = async ({ refreshToken, accessToken }) => {
 const forgotPasswordService = async (email) => {
   const user = await User.findOne({ email }).select("+passwordHash");
 
-  // Always respond with a generic message to prevent user enumeration attacks
   if (!user) {
     return {
-      message: "If that email exists, a reset link has been dispatched.",
+      registered: false,
+      message: "No account found with this email. Please sign up first.",
     };
   }
 
@@ -190,7 +190,7 @@ const forgotPasswordService = async (email) => {
     );
   }
 
-  return { message: "If that email exists, a reset link has been dispatched." };
+  return { registered: true, message: "If that email exists, a reset link has been dispatched." };
 };
 
 const resetPasswordService = async (rawToken, newPassword) => {

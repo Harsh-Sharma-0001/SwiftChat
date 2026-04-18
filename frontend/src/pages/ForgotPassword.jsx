@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Sparkles, Mail, ArrowLeft, Send, CheckCircle } from 'lucide-react';
 import api from '../services/api';
 import toast from 'react-hot-toast';
@@ -8,6 +8,7 @@ export default function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -19,7 +20,14 @@ export default function ForgotPassword() {
       setSubmitted(true);
       toast.success(res.data.message);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to send reset signal');
+      if (err.response?.status === 404 || err.response?.data?.registered === false) {
+        toast.error("No account found. Please sign up first.");
+        setTimeout(() => {
+          navigate('/register');
+        }, 2000);
+      } else {
+        toast.error(err.response?.data?.message || 'Failed to send reset signal');
+      }
     } finally {
       setLoading(false);
     }

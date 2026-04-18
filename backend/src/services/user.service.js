@@ -131,4 +131,52 @@ const getConnectsList = async (currentUserId) => {
   }));
 };
 
-module.exports = { getUserProfile, updateUserProfile, toggleFollow, searchUsersService, getConnectsList, updateUserSettingsService };
+const deleteUserAccountService = async (userId) => {
+  const user = await User.findById(userId);
+  if (!user) throw new AppError('User not found', StatusCodes.NOT_FOUND);
+
+  const mongoose = require('mongoose');
+
+  await Promise.all([
+    User.findByIdAndDelete(userId),
+    Post.deleteMany({ user: userId }),
+    mongoose.model('Like').deleteMany({ user: userId }),
+    mongoose.model('Comment').deleteMany({ user: userId }),
+    Follow.deleteMany({ $or: [{ follower: userId }, { following: userId }] }),
+    mongoose.model('DirectMessage').deleteMany({ $or: [{ sender: userId }, { receiver: userId }] }).catch(() => {}), // Use catch because it might not exist if named differently
+    mongoose.model('ChatLog').deleteMany({ user: userId }).catch(() => {})
+  ]);
+};
+
+const getNeuralLinksCountService = async (userId) => {
+  const user = await User.findById(userId).select('following');
+  if (!user || !user.following || user.following.length === 0) return 0;
+  
+  const count = await User.countDocuments({
+    _id: { $in: user.following },
+    following: userId
+  });
+  return count;
+};
+
+const getResonanceMatchService = async (userId) => {
+  const currentUser = await User.findById(userId);
+  if (!currentUser) throw new AppError('User not found', StatusCodes.NOT_FOUND);
+
+  const emotionVibe = currentUser.emotionVibe || 'neutral';
+  
+  let match = await User.findOne({
+    _id: { $ne: currentUser._id, $nin: currentUser.following },
+    emotionVibe: emotionVibe
+  }).select('displayName username avatarUrl emotionVibe');
+
+  if (!match) {
+    match = await User.findOne({
+      _id: { $ne: currentUser._id, $nin: currentUser.following }
+    }).sort({ updatedAt: -1 }).select('displayName username avatarUrl emotionVibe');
+  }
+  
+  return match;
+};
+
+module.exports = { getUserProfile, updateUserProfile, toggleFollow, searchUsersService, getConnectsList, updateUserSettingsService, deleteUserAccountService, getNeuralLinksCountService, getResonanceMatchService };

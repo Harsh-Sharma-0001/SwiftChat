@@ -69,7 +69,10 @@ const logout = async (req, res, next) => {
 const forgotPassword = async (req, res, next) => {
   try {
     const result = await forgotPasswordService(req.body.email);
-    sendSuccess(res, result, result.message);
+    if (result.registered === false) {
+      return res.status(404).json({ success: false, message: result.message, registered: false });
+    }
+    sendSuccess(res, result, result.message, StatusCodes.OK);
   } catch (err) {
     next(err);
   }

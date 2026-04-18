@@ -22,6 +22,15 @@ async function startServer() {
     await connectMongoDB();
     await testRedisConnection();
 
+    try {
+      const transporter = require('./utils/email.service').createTransporter();
+      await transporter.verify();
+      logger.info('✅ Email transporter verified — SMTP connection healthy');
+    } catch (emailErr) {
+      logger.warn('⚠️ Email transporter failed verification:', emailErr.message);
+      // Don't crash server — just warn
+    }
+
     server.listen(PORT, () => {
       logger.info(`🚀 SwiftChat Backend running on port ${PORT} [${process.env.NODE_ENV}]`);
     });

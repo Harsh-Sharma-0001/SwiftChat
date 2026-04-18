@@ -18,22 +18,26 @@ export default function AIInsights() {
   useEffect(() => {
     const syncData = async () => {
       try {
-        const [trendRes, insightsRes] = await Promise.all([
-          api.get('/interactions/trending-emotions'),
-          api.get('/interactions/insights')
+        const [trendRes, insightsRes, linksRes, matchRes] = await Promise.all([
+          api.get('/interactions/trending-emotions').catch(() => ({ data: { data: {} } })),
+          api.get('/interactions/insights').catch(() => ({ data: { data: {} } })),
+          api.get('/users/neural-links-count').catch(() => ({ data: { data: { count: 0 } } })),
+          api.get('/users/resonance-match').catch(() => ({ data: { data: { match: null } } }))
         ]);
-        setTrending(trendRes.data.data.trending || []);
-        const data = insightsRes.data.data;
-        if (data) {
-          setRadarData(data.radarData || []);
-          setAreaData(data.areaData || []);
-          setInsights({
-            flowState: data.flowState || 0,
-            neuralLinks: data.neuralLinks || 0,
-            resonanceMatch: data.resonanceMatch || 'Scanning...',
-            stats: data.stats || { synapses: 0, pulse: 0, uptime: '99.9%' }
-          });
-        }
+        setTrending(trendRes.data?.data?.trending || []);
+        const data = insightsRes.data?.data;
+        const linksCount = linksRes.data?.data?.count || 0;
+        const matchUser = matchRes.data?.data?.match;
+
+        setRadarData(data?.radarData || []);
+        setAreaData(data?.areaData || []);
+        setInsights({
+          flowState: data?.flowState || 0,
+          neuralLinks: linksCount,
+          resonanceMatch: matchUser ? matchUser.displayName : 'No match',
+          resonanceVibe: matchUser ? matchUser.emotionVibe : null,
+          stats: data?.stats || { synapses: 0, pulse: 0, uptime: '99.9%' }
+        });
       } catch (e) {
         console.error('Failed to sync trending data', e);
       } finally {
@@ -109,10 +113,16 @@ export default function AIInsights() {
             </div>
             <h3 className="font-bold text-lg">Resonance Match</h3>
           </div>
-          <div className="text-4xl font-extrabold text-white">#{insights.resonanceMatch}</div>
-          <p className="text-sm tracking-wide text-green-400 mt-2 uppercase text-[10px] font-bold flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-400"></span> Trending Up
-          </p>
+          <div className="text-3xl font-extrabold text-white truncate px-2">{insights.resonanceMatch}</div>
+          {insights.resonanceVibe ? (
+            <p className="text-sm tracking-wide text-sc-pink mt-2 uppercase text-[10px] font-bold flex items-center justify-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-sc-pink animate-pulse"></span> Shared Vibe: {insights.resonanceVibe}
+            </p>
+          ) : (
+             <p className="text-sm tracking-wide text-sc-muted mt-2 uppercase text-[10px] font-bold flex items-center justify-center gap-1">
+               Awaiting Connection
+             </p>
+          )}
         </div>
 
         <div className="glass-card p-6 shadow-glow-sm relative overflow-hidden group">

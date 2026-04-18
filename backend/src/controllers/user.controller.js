@@ -48,4 +48,23 @@ const getUserPosts = async (req, res) => {
   sendPaginated(res, result.posts, result.pagination, 'User posts fetched');
 };
 
-module.exports = { getUserById, updateUser, toggleFollow, searchUsers, getConnects, getUserPosts, updateSettings };
+// DELETE /api/users/me
+const deleteUserAccount = async (req, res) => {
+  const { deleteUserAccountService } = require('../services/user.service');
+  await deleteUserAccountService(req.user.id);
+  sendSuccess(res, null, 'Account permanently terminated');
+};
+
+const getNeuralLinksCount = async (req, res) => {
+  const { getNeuralLinksCountService } = require('../services/user.service');
+  const count = await getNeuralLinksCountService(req.user.id);
+  sendSuccess(res, { count });
+};
+
+const getResonanceMatch = async (req, res) => {
+  const { getResonanceMatchService } = require('../services/user.service');
+  const match = await getResonanceMatchService(req.user.id);
+  sendSuccess(res, { match });
+};
+
+module.exports = { getUserById, updateUser, toggleFollow, searchUsers, getConnects, getUserPosts, updateSettings, deleteUserAccount, getNeuralLinksCount, getResonanceMatch };
